@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.1 2005/03/14 19:27:17 digibike Exp $
+// $Id: creativecommons.module,v 1.2 2005/03/15 19:53:24 digibike Exp $
 
 
 ##################################################
@@ -523,7 +523,16 @@ function creativecommons_get_formats() {
 function creativecommons_nodeapi(&$node, $op, $arg) {
   switch($op) {
     case 'settings':
-      $output[t('creative commons license')] = form_checkbox(NULL, "creativecommons_$node->type", 1, variable_get("creativecommons_$node->type", 1));
+      /* 
+      // THIS WORKED IN 4.5.x
+      $output[t('creative commons license')] = form_checkbox(NULL, "creativecommons_$node->type", 1, 
+        variable_get("creativecommons_$node->type", 1));
+      */
+      // this works for Drupal 4.6
+      $output .= form_checkbox(
+        t("Apply the Creative Commons module to content type '$node'"),
+        "creativecommons_$node", 1, variable_get("creativecommons_$node", 0)
+      );
       break;
 
     case 'validate':
