@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.1 2005/03/14 19:27:17 digibike Exp $
+// $Id: creativecommons.class.php,v 1.1.2.1 2005/03/14 22:54:18 digibike Exp $
 
 
 ##################################################
