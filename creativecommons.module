@@ -1,0 +1,807 @@
+<?php
+// $Id: creativecommons.module,v 1.1 2005/03/14 19:27:17 digibike Exp $
+
+
+##################################################
+##################################################
+
+/*
+ * Creative Commons Drupal module
+ *   Allows content within a site or attached to a node to 
+ *   be assigned a Creative Commons license.
+ *   http://creativecommons.org/license/
+ * 
+ *
+ * By: Peter Bull <pbull@ltc.org>
+ * 2005-02-28 / digitalbicycle.org / ltc.org
+ * This software is released under the terms of the LGPL license
+ * 
+ *
+ * Utilizes code and inspiration from http://cclicense.sourceforge.net/
+ *   Originally released by Blake Watters <sbw@ibiblio.org> 
+ *   under the terms of the LGPL license.
+ * 
+ */
+
+##################################################
+##################################################
+
+
+require_once('creativecommons.class.php');
+
+
+/**
+ * Enclose each arg in paragraph tags.
+ */
+function para() {
+  $args = func_get_args();
+  $p = '';
+  foreach($args as $c)
+    $p .= "<p>$c</p>";
+  return $p;
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+function creativecommons_perm() {
+  return array('administer creative commons');
+}
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function creativecommons_menu($may_cache) {
+  $items = array();
+  if ($may_cache) {
+    $access = user_access('administer creative commons');
+    $items[] = array(
+      'path'      => 'admin/settings/creativecommons',
+      'title'     => 'Creative Commons',
+      'callback'  => 'creativecommons_configure',
+      'access'    => $access
+    );
+    $items[] = array(
+      'path'	=> 'admin/settings/creativecommons/edit',
+      'title'     => 'settings',
+      'type'      => MENU_DEFAULT_LOCAL_TASK,
+      'weight'	=> -10
+    );
+    $items[] = array(
+      'path'      => 'admin/settings/creativecommons/site',
+      'title'     => 'site license',
+      'callback'  => 'creativecommons_configure',
+      'access'    => $access,
+      'type'      => MENU_LOCAL_TASK
+    );
+  }
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_help().
+ */
+function creativecommons_help($section) {
+  $cc_desc = 'A Creative Commons license helps you publish your work online while letting others know exactly what they can and can\'t do with your work. Creative Commons offers a flexible range of protections and freedoms for authors and artists, built upon the "all rights reserved" concept of traditional copyright to create a voluntary "some rights reserved" copyright.';
+  $cc_desc_short = 'Assign a Creative Commons license to content that appears on the site.';
+  $cc_node = 'Attaching a Creative Commons license to a node within Drupal can designate the content of that node, as well as any attached files, as Creatively Commoned material.';
+  $cc_url = 'For more information, visit <a href="http://creativecommons.org/learnmore" target="_blank">http://creativecommons.org/learnmore</a>.';
+
+  switch ($section) {
+    case 'admin/modules#description':
+      return t($cc_desc_short);
+    case 'admin/settings/creativecommons':
+      return t(para($cc_desc, $cc_node, $cc_url));
+    case 'admin/help#creativecommons':
+      return t(para($cc_desc, $cc_node, $cc_url));
+  }
+}
+
+
+/**
+ * Admin settings page
+ */
+function creativecommons_configure() {
+
+  // site license settings
+  if (arg(3) == 'site') {
+    $output = creativecommons_configure_site();
+    $output .= creativecommons_configure_site_license_display();
+  }
+
+  // general settings
+  else {
+    if($_POST)
+      system_settings_save();
+    $output = creativecommons_configure_general();
+    $output .= creativecommons_configure_license();
+    $output .= creativecommons_configure_display();
+  }
+  print theme('page', system_settings_form($output));
+}
+
+
+/**
+ * General Creative Commons settings form
+ */
+function creativecommons_configure_general() {
+  $general = form_textfield(
+    t('Creative Commons image path'),
+    'creativecommons_image_path',
+    variable_get('creativecommons_image_path', 'modules/creativecommons/images'), 50, 255,
+    t('A file system path where the Creative Commons images will reside. This directory must exist and be publicly accessible. Copy the images included with the Creative Commons module to this directory.'),
+    NULL,
+    TRUE
+  );
+  $general .= form_textfield(
+    t('Creative Commons javascript path'),
+    'creativecommons_js_path',
+    variable_get('creativecommons_js_path', 'modules/creativecommons/js'), 50, 255,
+    t('A file system path where the Creative Commons javascript code will reside. This directory must exist and be publicly accessible. Copy the javascript (.js) file included with the Creative Commons module to this directory.'),
+    NULL,
+    TRUE
+  );
+  return form_group(t('General settings'), $general);
+}
+
+
+/**
+ * Creative Commons license selection settings form
+ */
+function creativecommons_configure_license() {
+  // if no licenses are available, then module will not work
+  if (!$selected_licenses = variable_get('creativecommons_available_licenses', NULL))
+    form_set_error('creativecommons_available_licenses',
+      t('You currently have no license options selected. You must enable at least one license or the module will not function properly'));
+
+  $license .= form_checkboxes(
+    t('Available licenses'),
+    'creativecommons_available_licenses',
+    $selected_licenses,
+    creativecommons_get_license_array(),
+    t('Select the licenses you would like to make available to your users.')
+  );
+  $license .= form_checkboxes(
+    t('Required metadata fields'),
+    'creativecommons_required',
+    variable_get('creativecommons_required', array()),
+    creativecommons_get_metadata_types(),
+    t('This option allows you to require specific metadata to be included when a license is applied.')
+  );
+  return form_group(t('License selection'), $license);
+}
+
+
+/**
+ * Creative Commons license display settings form
+ */
+function creativecommons_configure_display() {
+  $display .= form_radios(
+    t('Display license information'),
+    'creativecommons_display',
+    variable_get('creativecommons_display', 1),
+    array(
+      t('Display text'),
+      t('Display text and Creative Commons logo'),
+      t('Display text and icons'),
+      t('Do not display license')
+    ),
+    t('You can display license details when viewing a node.'),
+    TRUE,
+    FALSE
+  );
+  $display .= form_checkbox(
+    t('Insert RDF into HTML'),
+    'creativecommons_rdf',
+    1,
+    variable_get('creativecommons_rdf', TRUE),
+    t('Attach license information within the HTML to let your visitors know what license applies to your works.')
+  );
+  return form_group(t('Node display'), $display);
+}
+
+
+/**
+ * Creative Commons site license display settings form
+ */
+function creativecommons_configure_site_license_display() {
+  $prefix = 'creativecommons_site';
+
+  // save fields
+  if ($_POST) {
+    variable_set($prefix.'_license_display', $_POST['edit'][$prefix.'_license_display']);
+    variable_set($prefix.'_license_embed', $_POST['edit'][$prefix.'_license_embed']);
+    variable_set($prefix.'_footer_text', $_POST['edit'][$prefix.'_footer_text']);
+  }
+
+  // site license display
+  $group .= form_checkbox(
+    t('Display site license on each page'),
+    $prefix.'_license_display',
+    1,
+    variable_get($prefix.'_license_display', FALSE)
+  );
+  $group .= form_checkbox(
+    t('Embed license metadata in the HTML of the site'),
+    $prefix.'_license_embed',
+    1,
+    variable_get($prefix.'_license_embed', FALSE)
+  );
+  $group .= form_textarea(
+    t('Footer text'),
+    $prefix.'_footer_text',
+    variable_get($prefix.'_footer_text', NULL),
+    60, 3,
+    t('This text will accompany the display of the site license.'),
+    NULL, NULL
+  );
+  return form_group(t('Site license display'), $group);
+}
+
+
+/**
+ * Return array of licenses parsed from licenses.xml
+ */
+function creativecommons_get_license_array() {
+  $license_xml = creativecommons_get_license_xml();
+  $parser = xml_parser_create();
+  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
+  xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
+  xml_parse_into_struct($parser, $license_xml, $values, $index);
+  xml_parser_free($parser);
+  $types = array();
+  $types['none'] = 'No license';
+  foreach ($values as $key) {
+    if ($key['tag'] == 'license' && $key['level'] == 2)
+      $types[$key['attributes']['id']] = $key['value'];
+  }
+  return $types;
+}
+
+
+/**
+ * Return array of questions for specified license
+ */
+function creativecommons_get_questions_array($license_id) {
+  $question_xml = creativecommons_get_questions_xml($license_id);
+  $parser = xml_parser_create();
+  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
+  xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
+  xml_parse_into_struct($parser, $question_xml, $values, $index);
+  xml_parser_free($parser);
+
+  $questions = array();
+  foreach($values as $xn) {
+
+    // new question array item
+    if ($xn['tag'] == 'field' && $xn['type'] == 'open') {
+      $current = $xn['attributes']['id'];
+      $questions[$current] = array();
+    }
+
+    // set description
+    if ($xn['tag'] == 'description')
+      $questions[$current]['description'] = $xn['value'];
+
+    // set question
+    if ($xn['tag'] == 'label' && is_null($questions[$current]['answers']) 
+      && $current !== null && is_null($ans_lbl))
+    {
+      $questions[$current]['question'] = $xn['value'];
+    }
+
+    // set answer labels/values
+    if ($ans_lbl !== null && $ans_val !== null) {
+      $questions[$current]['answers'][$ans_val] = $ans_lbl;
+      $ans_lbl = null;
+      $ans_val = null;
+    }
+    if ($xn['tag'] == 'enum' && $xn['type'] == 'open')
+      $ans_lbl = $xn['attributes']['id'];
+    if ($xn['tag'] == 'label' && $ans_lbl !== null)
+      $ans_val = $xn['value'];
+  }
+  return $questions;
+}
+
+
+/**
+ * Return xml defining available creative commons licenses
+ */
+function creativecommons_get_license_xml() {
+  return creativecommons_return_xml('licenses.xml', 'http://api.creativecommons.org/rest/classes');
+}
+
+
+/**
+ * Return xml defining questions/answers for a specific creative commons license
+ */
+function creativecommons_get_questions_xml($license_id) {
+  if ($license_id != 'none' && !is_null($license_id)) {
+    $filename = $license_id . '.xml';
+    $uri = 'http://api.creativecommons.org/rest/license/' . $license_id . '/';
+    return creativecommons_return_xml($filename, $uri);
+  }
+  return;
+}
+
+
+/**
+ * Refreshes cached XML if file is greater than $hrs hours old
+ * $filename	name up file to be retrieved/updated
+ * $uri		uri of file content on CC api site
+ * $hrs		file should be updated if older then X number of hours
+ * $update	force update of the file
+ */
+function creativecommons_return_xml($filename, $uri, $hrs = 24, $update = false) {
+  // check for xml variable
+  $xml = variable_get('creativecommons_'.$filename, NULL);
+  if ($xml) {
+    
+    // get timestamp ***directly from variables table*** to avoid caching
+    $result = db_query("SELECT value FROM {variable} WHERE name = '%s'", 'creativecommons_'.$filename.'_timestamp');
+    if ($row = db_fetch_object($result)) {
+      if ($ts = unserialize($row->value)) {
+        $diff = (time() - $ts)/60/60;
+        if ($diff >= $hrs)
+          $update = true;
+      }
+      else $update = true;
+    }
+    else $update = true;
+  }
+  else $update = true;
+
+  // request xml
+  if ($update) {
+    $headers = array();
+    $result = drupal_http_request($uri, $headers);
+    switch ($result->code) {
+      case 200:
+        variable_set('creativecommons_'.$filename, $result->data);
+        variable_set('creativecommons_'.$filename.'_timestamp', time());
+        return $result->data;
+        break;
+      default:
+        return;
+        break;
+    }
+  }
+  else return $xml;
+}
+
+
+/**
+ * Creative Commons site license settings form
+ */
+function creativecommons_configure_site() {
+  global $base_url;
+  $prefix = 'creativecommons_site';
+  if ($_POST) {
+
+    // save license data
+    $p = $_POST['edit'][$prefix.'_license'];
+    $questions = creativecommons_get_questions_array($p);
+    foreach ($questions as $k => $v) {
+      $post_val = $_POST['edit'][$prefix][$k];
+      if (in_array($post_val, $v['answers'])) {
+        $questions[$k]['selected'] = $post_val;
+      }
+      else {
+        // default to first answer in array
+        $questions[$k]['selected'] = current($v['answers']);
+      }
+    }
+    if (!$_POST['edit'][$prefix]['metadata']['source'])
+      $_POST['edit'][$prefix]['metadata']['source'] = $base_url;
+    $cc = new creativecommons_license($p, $questions, $_POST['edit'][$prefix]['metadata']);
+
+    // save serialized data
+    variable_set('creativecommons_site_license', serialize($cc));
+  }
+
+  // load site license
+  else {
+    $cc_data = variable_get('creativecommons_site_license', NULL);
+    if ($cc_data)
+      $cc = unserialize($cc_data);
+  }
+  $node->cc = $cc;
+  $selected = variable_get($prefix . '_license', NULL);
+  $display .= creativecommons_select_license_form($node, $prefix);
+
+  // append metadata fields and defaults site values
+  global $base_url;
+  $defaults = array('format' => 'interactive', 'source' => $base_url);
+  foreach (array('description' => 'site_slogan', 'description' => 'site_mission',
+    'title' => 'site_name') as $mn => $vv) {
+    $gv = variable_get($vv, NULL);
+    if (!is_null($gv) && strlen($gv) > 0)
+      $defaults[$mn] = $gv;
+  }
+  if (!is_null($node->cc->license_type) && $node->cc->license_type != 'none')
+    $display .= creativecommons_build_metadata_fields($node, $prefix, $defaults);
+  return form_group(t('Site license selection'), $display);
+}
+
+
+/**
+ * Display license selection form
+ */
+function creativecommons_select_license_form($node, $prefix) {
+
+  // js to update form?  or rewrite layers with form fields per each license
+  $extra = 'onchange="this.form.submit();"';
+
+  // available license types
+  $types = creativecommons_get_license_array();
+  if ($avail = variable_get('creativecommons_available_licenses', NULL)) {
+    foreach($types as $k => $v)
+      if (array_search($k, $avail) === false)
+        unset($types[$k]);
+  }
+
+  // default to first license in array
+  if (!$node->cc->license_type)
+    $node->cc->license_type = key($types);
+
+  $display .= form_select(
+    t('Select a license'),
+    $prefix . '_license',
+    $node->cc->license_type,
+    $types, NULL, $extra
+  );
+
+  $question_array = creativecommons_get_questions_array($node->cc->license_type);
+  foreach ($question_array as $k => $v) {
+    if ($node->cc->$k !== null) {
+      $question_array[$k]['selected'] = $node->cc->$k;
+    }
+    else {
+      // default to first answer in array
+      $question_array[$k]['selected'] = current($v['answers']);
+    }
+  }
+
+  foreach ($question_array as $q => $a) {
+    $options = array();
+    foreach ($a['answers'] as $k => $v)
+      $options[$v] = $k;
+    if (count($a['answers']) <= 3) {
+      // radios
+      $display .= form_radios(str_replace(':', '', $a['question']), $prefix . '][' . $q, $node->cc->$q,
+        $options, $a['description'], TRUE, NULL);
+    }
+    else {
+      // dropdown
+      $display .= form_select(str_replace(':', '', $a['question']), $prefix . '][' . $q, $node->cc->$q,
+        $options, $a['description'], 0, NULL, TRUE);
+    }
+  }
+  return $display;
+}
+
+
+/**
+ * Implementation of hook_footer() -- display site license on footer of each page
+ */
+function creativecommons_footer() {
+  if ($cc_data = variable_get('creativecommons_site_license', NULL)) {
+    $cc = unserialize(stripslashes($cc_data));
+    if(variable_get('creativecommons_site_license_display', FALSE))
+        $output .= $cc->get_html(true);
+    if(variable_get('creativecommons_site_license_embed', FALSE))
+      $output .= '<!-- '.$cc->get_rdf().' -->';
+    return $output;
+  }
+  return;
+}
+
+
+/**
+ * Return array of formats.
+ * Uses associative array to preserve content name in form values.
+ */
+function creativecommons_get_formats() {
+  $f = array(
+    'other' => 'Other', 
+    'audio' => 'Audio',
+    'video' => 'Video',
+    'image' => 'Image',
+    'text' => 'Text',
+    'interactive' => 'Interactive');
+  return $f;
+}
+
+
+/**
+ * Implementation of hook_nodeapi()
+ */
+function creativecommons_nodeapi(&$node, $op, $arg) {
+  switch($op) {
+    case 'settings':
+      $output[t('creative commons license')] = form_checkbox(NULL, "creativecommons_$node->type", 1, variable_get("creativecommons_$node->type", 1));
+      break;
+
+    case 'validate':
+      if (variable_get("creativecommons_$node->type", 1))
+        if($_POST['edit'])
+          creativecommons_validate($node);
+      break;
+
+    case 'form post':
+      if (variable_get("creativecommons_$node->type", 1))
+        $output = creativecommons_form($node);
+      break;
+
+    case 'load':
+      if (variable_get("creativecommons_$node->type", 1))
+        $node->cc = creativecommons_load($node);
+      break;
+
+    case 'view':
+      creativecommons_view($node, FALSE);
+      break;
+
+    case 'insert':
+    case 'update':
+      creativecommons_delete($node);
+      creativecommons_save($node);
+      break;
+
+    case 'delete':
+      creativecommons_delete($node);
+      break;
+  }
+  return $output;
+}
+
+
+/**
+ * Append html and rdf content to node.
+ */
+function creativecommons_view(&$node, $teaser = FALSE, $page = FALSE) {
+  if ($node->cc) {
+    // append html
+    $output = $node->cc->get_html();
+
+    // append rdf
+    if (variable_get('creativecommons_rdf', TRUE))
+      $output .= "<!-- ".$node->cc->get_rdf()." -->";
+
+    if ($output) {
+      $node->body .= '<p class="creativecommons">'.$output.'</p>';
+      if ($teaser)
+        $node->teaser .= '<p class="creativecommons">'.$output.'</p>';
+    }
+  }
+}
+
+
+/**
+ * Return associative array of metadata names/descriptions
+ */
+function creativecommons_get_metadata_types() {
+  return array(
+    'format'            => t('Format of work'),
+    'title'             => t('Title of work'),
+    'description'       => t('Description'),
+    'creator'           => t('Creator\'s name'),
+    'rights'		=> t('<a href="http://creativecommons.org/jargon/copyright" onclick="cc_popup(\'http://creativecommons.org/jargon/copyright\');return false;">Copyright</a> holder\'s name'),
+    'date'  		=> t('<a href="http://creativecommons.org/jargon/copyright_date" onclick="cc_popup(\'http://creativecommons.org/jargon/copyright_date\');return false;">Year of copyright</a>'),
+    'source'		=> t('<a href="http://creativecommons.org/jargon/source_work" onclick="cc_popup(\'http://creativecommons.org/jargon/source_work\');return false;">Source work</a> URL')
+  );
+}
+
+
+/**
+ * Form for attaching Creative Commons license to a node
+ */
+function creativecommons_form($node) {
+  // if no licenses available (in admin > settings > creative commons) then no form displayed
+  if (!$selected_licenses = variable_get('creativecommons_available_licenses', NULL))
+    return;
+
+  $cc_img_path = variable_get('creativecommons_image_path', 'modules/creativecommons/images');
+  $cc_js_path = variable_get('creativecommons_js_path', 'modules/creativecommons/js');
+
+  $cc_img = '<img src="'. $cc_img_path . '/cc-choose-license.gif" alt="Creative Commons licenses" />';
+  $cc_txt = '<p><a href="http://creativecommons.org/learn/licenses/" target="_blank">Creative Commons licenses</a> help you share your work while keeping your copyright. Other people can copy and distribute your work provided they give you credit -- and only on the conditions you specify here. This form helps you choose those conditions. If you want to offer your work with no conditions, choose the <a href="http://creativecommons.org/licenses/publicdomain/" target="_blank">public domain</a>.</p>';
+
+  // add javascript to <head>
+  $header = "\n  <script type=\"text/javascript\" src=\"". $cc_js_path ."/cc_toggle.js\"></script>";
+  drupal_set_html_head($header);
+
+  // built html output
+  $output = t($cc_txt);
+
+  //$selected = $node->cc_license;
+  $selected = (is_null($node->cc_license)) ? $node->cc->license_type  : $node->cc_license;
+  $prefix = 'cc';
+  $output .= creativecommons_select_license_form($node, $prefix);
+
+  // if no license, then don't process the metadata
+  //  note: this loses the metadata, need to preserve it somehow... maybe load the hidden layer,
+  //  without the link to display:block, and no error handling.
+  if (is_null($selected) || $selected == 'none')
+    return '<div class="attachments">'. form_group($cc_img, $output) . '</div>';
+
+
+/// ///////////////////////////////////
+//if (!is_null($node->cc_license->license_type) && $node->cc_license->license_type != 'none')
+//  $output .= para("not an empty license");
+/// //////////////////////////////////////
+
+
+  // required metadata
+  $required = variable_get('creativecommons_required', array());
+  if (!is_array($required))
+    $required = array();
+
+  // loop thru metadata fields
+  $fields = '';
+  $metadata_types = creativecommons_get_metadata_types();
+
+  foreach ($metadata_types as $m => $d) {
+    $sel = ($node->cc->metadata[$m]) ? $node->cc->metadata[$m] : '';
+
+    // validate data
+    if ($required) {
+      $req = (in_array($m, $required)) ? true : false;
+      if ($req && !$sel && !$node->cc->new) {
+        form_set_error("cc][metadata][$m", t("Creative Commons: Please submit the $m for your content."));
+        // show metadata block if errors exist
+        $node->cc->show_meta = true;
+      }
+      // show metadata block on creation of post
+      else if ($node->cc->new)
+        $node->cc->show_meta = true;
+    }
+
+    // build metadata form fields
+    switch (strtolower($m)) {
+      case 'format':
+        $formats = creativecommons_get_formats();
+        $fields .= form_select(t($d), "cc][metadata][$m", $sel, $formats, NULL, NULL, NULL, $req);
+        break;
+
+      case 'description':
+        $fields .= form_textarea(t($d), "cc][metadata][$m", $sel, 60, 5, NULL, NULL, $req);
+        break;
+
+      default:
+        $fields .= form_textfield(t($d), "cc][metadata][$m", $sel, 50, 255, NULL, NULL, $req);
+        break;
+    }
+  }
+
+
+  // container for metadata, toggle visible for 'no license'
+  //$output .= '<div id="cc_metadata" style="display:'.(($node->license_type=='none') ? 'none' : 'block').'">';
+
+  //if(!$node->cc_optional_visible)
+  //  $link_txt = 'Click to include more information about your work.';
+  //else
+  //  $link_txt = 'Click to hide these fields';
+
+  $link_txt = 'Click to include more information about your work.';
+  $output .= '<p><a onclick="cc_toggle(\'\',\'cc_optional\');return false;" href="javascript:cc_toggle(\'\',\'cc_optional\');return false;"><span id="moreinfo">'.$link_txt .'</span></a></p>';
+  $show_style = ($node->cc->show_meta) ? 'block' : 'none';
+  $output .= '<div id="cc_optional" style="display:'.$show_style.';">';
+
+
+  // ////////////////////////
+  // autofill javascript
+  global $user;
+  $output .= para(l(t('Autofill license fields'), "javascript: cc_autofill('$prefix', '$user->name');"));
+
+  // save user metadata link
+//  $output .= para(l(t('Set this as my default license'),
+//  $output .= form_button($value, $name = 'op', $type = 'submit', $attributes = NULL);
+//  $output .= form_button(t('Save this as my default license'), 'op', 'button');
+//    $type = 'save_default', $attributes = array('onclick' => 'javascript:this.form.submit();'));
+  $output .= para("button to save default user values");
+
+
+  $output .= $fields;
+  $output .= '</div>';
+  return '<div class="attachments">'. form_group($cc_img, $output) . '</div>';
+}
+
+
+/**
+ * Loop thru metadata and build form fields
+ */
+function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL) {
+  // loop thru metadata fields
+  $fields = '';
+  $metadata_types = creativecommons_get_metadata_types();
+  foreach ($metadata_types as $m => $d) {
+    $sel = ($node->cc->metadata[$m]) ? $node->cc->metadata[$m] : '';
+    if (is_array($defaults) && array_key_exists($m, $defaults)) {
+      if (is_null($sel))
+        $sel = $defaults[$m];
+    }
+
+    // build metadata form fields
+    switch (strtolower($m)) {
+      case 'format':
+        $formats = creativecommons_get_formats();
+        $fields .= form_select(t($d), "$prefix][metadata][$m", $sel, $formats, NULL, NULL, NULL, $req);
+        break;
+
+      case 'description':
+        $fields .= form_textarea(t($d), "$prefix][metadata][$m", $sel, 60, 5, NULL, NULL, $req);
+        break;
+
+      default:
+        $fields .= form_textfield(t($d), "$prefix][metadata][$m", $sel, 50, 255, NULL, NULL, $req);
+        break;
+    }
+  }
+  return $fields;
+}
+
+
+/**
+ * Save license/node relationship in database
+ */
+function creativecommons_save($node) {
+  $node->cc->nid = $node->nid;
+  $node->cc->save();
+}
+
+
+/**
+ * Delete node/license relationship from database
+ */
+function creativecommons_delete($node) {
+  if ($node->nid) {
+    db_query("DELETE FROM {creativecommons} WHERE nid = %d", $node->nid);
+  }
+  return;
+}
+
+
+/**
+ * Load the license for a specified node
+ */
+function creativecommons_load($node) {
+  if ($node->nid && !isset($node->cc)) {
+    $result = db_query("SELECT cc.data FROM {creativecommons} cc WHERE cc.nid = %d", $node->nid);
+    if ($row = db_fetch_object($result)) {
+      $data = stripslashes($row->data);
+      $cc = unserialize($data);
+      return $cc;
+    }
+  }
+  return;
+}
+
+
+/**
+ * 
+ */
+function creativecommons_validate(&$node) {
+  if (is_null($node->cc_license))
+    $node->cc_license = (is_null($node->cc->license_type)) ? 'none' : $node->cc->license_type;
+  $questions = creativecommons_get_questions_array($node->cc_license);
+  // loop thru ?s, set to current val, else default to first answer in array
+  foreach ($questions as $k => $v) {
+    if (in_array($node->cc[$k], $v['answers']))
+      $questions[$k]['selected'] = $node->cc[$k];
+    else
+      $questions[$k]['selected'] = current($v['answers']);
+  }
+  $cc = new creativecommons_license($node->cc_license, $questions, $node->cc['metadata']);
+
+  if (!$node->cc)
+    $cc->new = true;
+  $node->cc = $cc;
+}
+
+
+?>
