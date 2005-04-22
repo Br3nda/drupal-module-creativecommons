@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.1 2005/03/14 19:27:17 digibike Exp $
+// $Id: creativecommons.class.php,v 1.2 2005/04/22 15:54:49 digibike Exp $
 
 
 ##################################################
@@ -250,7 +250,7 @@ class creativecommons_license {
     // construct images + links
     if ($img = $this->get_images($site_license)) {
       foreach ($img as $img_tag)
-        $html .= l($img_tag, $this->license_uri, array('rel' => 'license')) . "\n";
+        $html .= l($img_tag, $this->license_uri, array('rel' => 'license'), NULL, NULL, FALSE, TRUE) . "\n";
       $html .= '<br />';
     }
 
