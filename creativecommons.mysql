@@ -9,4 +9,5 @@ CREATE TABLE `creativecommons` (
   `data` text NOT NULL,
   PRIMARY KEY  (`id`),
   KEY `nid` (`nid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) 
+TYPE=MyISAM;
