@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.2 2005/04/22 15:54:49 digibike Exp $
+// $Id: creativecommons.class.php,v 1.3 2007/03/02 00:30:09 kreynen Exp $
 
 
 ##################################################
@@ -65,7 +65,7 @@ class creativecommons_license {
 
 
   /**
-   * Post answer data to creative commons web api, return xml response.
+   * Post answer data to creative commons web api, return xml response. 
    */
   function post_answers($questions) {
     $id = $this->license_type;
