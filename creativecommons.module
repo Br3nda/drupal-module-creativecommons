@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.5 2007/03/02 00:30:09 kreynen Exp $ drupal 4.7 compatible
+// $Id: creativecommons.module,v 1.6 2009/06/06 01:33:41 balleyne Exp $ drupal 4.7 compatible
 
 
 ##################################################
@@ -14,12 +14,12 @@
  *
  * By: Peter Bull <pbull@ltc.org>
  * 2005-02-28 / digitalbicycle.org / ltc.org
- * This software is released under the terms of the LGPL license
- * 
+ * This software is released under the terms of the LGPL license, relicensed 
+ * under GPLv2 for drupal.org.
  *
  * Utilizes code and inspiration from http://cclicense.sourceforge.net/
  *   Originally released by Blake Watters <sbw@ibiblio.org> 
- *   under the terms of the LGPL license.
+ *   under the terms of the LGPL license (now, GPLv2 for drupal.org).
  * 
  */
 
@@ -33,7 +33,7 @@ require_once('creativecommons.class.php');
 /**
  * Enclose each arg in paragraph tags.
  */
-function para() {
+function cc_para() {
   $args = func_get_args();
   $p = '';
   foreach($args as $c)
@@ -53,30 +53,28 @@ function creativecommons_perm() {
 /**
  * Implementation of hook_menu().
  */
-function creativecommons_menu($may_cache) {
+function creativecommons_menu() {
   $items = array();
-  if ($may_cache) {
-    $access = user_access('administer creative commons');
-    $items[] = array(
-      'path'      => 'admin/settings/creativecommons',
-      'title'     => 'Creative Commons',
-      'callback'  => 'creativecommons_configure',
-      'access'    => $access
-    );
-    $items[] = array(
-      'path'	=> 'admin/settings/creativecommons/edit',
-      'title'     => 'settings',
-      'type'      => MENU_DEFAULT_LOCAL_TASK,
-      'weight'	=> -10
-    );
-    $items[] = array(
-      'path'      => 'admin/settings/creativecommons/site',
-      'title'     => 'site license',
-      'callback'  => 'creativecommons_configure',
-      'access'    => $access,
-      'type'      => MENU_LOCAL_TASK
-    );
-  }
+  
+  $items['admin/settings/creativecommons'] = array(
+    'title' => t('Creative Commons'),
+    'description' => t('Configure the Creative Commons settings.'),
+    'page callback' => 'creativecommons_configure',
+    'page arguments' =>  array('creativecommons_configure_general'),
+    'access arguments' => array('administer creative commons')
+  );
+  
+  $items['admin/settings/creativecommons/edit'] = array(
+    'title' => t('settings'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10
+  );
+  $items['admin/settings/creativecommons/site'] = array(
+    'title' => t('site license'),
+    'page callback' => 'creativecommons_configure',
+    'access arguments' => array('administer creative commons'),
+    'type' => MENU_LOCAL_TASK
+  );
   return $items; 
 }
 
@@ -87,16 +85,16 @@ function creativecommons_menu($may_cache) {
 function creativecommons_help($section) {
   $cc_desc = 'A Creative Commons license helps you publish your work online while letting others know exactly what they can and can\'t do with your work. Creative Commons offers a flexible range of protections and freedoms for authors and artists, built upon the "all rights reserved" concept of traditional copyright to create a voluntary "some rights reserved" copyright.';
   $cc_desc_short = 'Assign a Creative Commons license to content that appears on the site.';
-  $cc_node = 'Attaching a Creative Commons license to a node within Drupal can designate the content of that node, as well as any attached files, as Creatively Commoned material.';
-  $cc_url = 'For more information, visit <a href="http://creativecommons.org/learnmore" target="_blank">http://creativecommons.org/learnmore</a>.';
+  $cc_node = 'Attaching a Creative Commons license to a node within Drupal can designate the content of that node, as well as any attached files, as available under that license.';
+  $cc_url = 'For more information, visit <a href="http://creativecommons.org/learnmore">http://creativecommons.org/learnmore</a>.';
 
   switch ($section) {
     case 'admin/modules#description':
       return t($cc_desc_short);
     case 'admin/settings/creativecommons':
-      return t(para($cc_desc, $cc_node, $cc_url));
+      return t(cc_para($cc_desc, $cc_node, $cc_url));
     case 'admin/help#creativecommons':
-      return t(para($cc_desc, $cc_node, $cc_url));
+      return t(cc_para($cc_desc, $cc_node, $cc_url));
   }
 }
 
@@ -112,14 +110,16 @@ function creativecommons_configure() {
  	  $output2 = creativecommons_configure_site_license_display();
  	  $output = array_merge($output1,$output2);	 
  }
-  else {  
+  else {
     if($_POST)
       system_settings_form_submit('creativecommons_configure',$_POST['edit']);
 	
-	$output = creativecommons_configure_general(); 
+	$output = creativecommons_configure_general();
  }
 
- return system_settings_form('creativecommons_configure', $output);
+ //TODO: the first argument is causing an error
+ //return system_settings_form('creativecommons_configure', $output);
+ return system_settings_form($output);
 }
 
 
@@ -154,7 +154,7 @@ function creativecommons_configure_general() {
 	  '#required' => TRUE,
 	);
 
-//---------------
+//--------------- TODO: error caused here (is this because I'm offline? if so, need more descriptive errors (i.e. could not contact CC API)!)
 if (!$selected_licenses = variable_get('creativecommons_available_licenses', NULL))
     form_set_error('creativecommons_available_licenses',
       t('You currently have no license options selected. You must enable at least one license or the module will not function properly'));
@@ -836,7 +836,7 @@ function creativecommons_form($node) {
 
 /// ///////////////////////////////////
 //if (!is_null($node->cc_license->license_type) && $node->cc_license->license_type != 'none')
-//  $output .= para("not an empty license");
+//  $output .= cc_para("not an empty license");
 /// //////////////////////////////////////
 
 
@@ -867,7 +867,7 @@ function creativecommons_form($node) {
   $form['creativecommons'][] = array('#value'=>'<p><a onclick="cc_toggle(\'\',\'cc_optional\');return false;" href="javascript:cc_toggle(\'\',\'cc_optional\');return false;"><span id="moreinfo">'.$link_txt .'</span></a></p>');
   $form['creativecommons'][] = array('#value'=>'<div id="cc_optional" style="display:'.$show_style.';">');
  
-  $form['creativecommons'][] = array('#value'=>para("button to save default user values"));
+  $form['creativecommons'][] = array('#value'=>cc_para("button to save default user values"));
 
   
   foreach ($metadata_types as $m => $d) {  
