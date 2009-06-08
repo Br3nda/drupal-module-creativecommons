@@ -1,0 +1,4 @@
+; $Id: creativecommons.info,v 1.1 2009/06/08 21:03:05 balleyne Exp $
+name = Creative Commons
+description = Allows users to add Creative Commons license to selected content.
+package = Licenses
