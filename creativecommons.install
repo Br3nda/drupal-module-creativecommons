@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * Implementation of hook_schema().
+ */
+function creativecommons_schema() {
+  $schema['creativecommons'] = array(
+    'description' => t('Creative Commons license to node mapping.'),
+    'fields' => array(
+      'nid' => array(
+        'description' => t('Node identifier.'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE
+      ),
+      'license' => array(
+        'description' => t('Creative Commons node license.'),
+        'type' => 'varchar',
+        'not null' => TRUE,
+        'length' => 12,
+        'default' => ''
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+  
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install()
+ */
+function creativecommons_install() {
+  $result = drupal_install_schema('creativecommons');
+  
+  if (count($result) > 0) {
+    drupal_set_message(t('Creative Commons module installed.'));
+  }
+  else {
+    drupal_set_message(t('Creative Commons table creation failed. Please "uninstall" the module and retry.'));
+  }
+}
+
+/**
+ * Implementation of hook_uninstall()
+ */
+function creativecommons_uninstall() {
+  drupal_uninstall_schema('creativecommons');
+}
+
