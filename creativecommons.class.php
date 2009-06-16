@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.1 2009/06/16 19:37:14 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.2 2009/06/16 19:53:15 balleyne Exp $
 
 
 ##################################################
@@ -229,7 +229,13 @@ class creativecommons_license {
     if (is_null($this->license_type) || $this->license_type == 'none')
       return;
 
-    $txt = 'This work is licensed under a '. l(t('Creative Commons License'), $this->license_uri, array('rel' => 'license', 'title' => $this->license_name)) .".\n";
+    $txt = 'This work is licensed under a '.
+      l(t('Creative Commons License'),
+        $this->license_uri,
+        array(
+          'attributes' => array('rel' => 'license', 'title' => $this->license_name),
+        )
+      ) .".\n";
     $html = "\n<!--Creative Commons License-->\n";
     if ($site_license)
       $html .= "<div id=\"ccFooter\">\n";
@@ -251,7 +257,13 @@ class creativecommons_license {
     // construct images + links
     if ($img = $this->get_images($site_license)) {
       foreach ($img as $img_tag)
-        $html .= l($img_tag, $this->license_uri, array('rel' => 'license'), NULL, NULL, FALSE, TRUE) ."\n";
+        $html .= l(
+          $img_tag,
+          $this->license_uri,
+          array(
+            'attributes' => array('rel' => 'license'),
+            'html' => TRUE,
+          )) ."\n";
       $html .= '<br />';
     }
 
