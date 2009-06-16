@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9 2009/06/12 16:31:48 balleyne Exp $ drupal 4.7 compatible
+// $Id: creativecommons.module,v 1.9.2.1 2009/06/16 20:43:45 balleyne Exp $
 
 
 ##################################################
@@ -60,7 +60,7 @@ function creativecommons_menu() {
   $items['admin/settings/creativecommons'] = array(
     'title' => 'Creative Commons',
     'description' => 'Configure the Creative Commons settings.',
-    'page callback' => 'drupal_get_form',//'creativecommons_configure',
+    'page callback' => 'drupal_get_form',
     'page arguments' =>  array('creativecommons_settings_form'),
     'access arguments' => array('administer creative commons')
   );
@@ -73,7 +73,7 @@ function creativecommons_menu() {
 
   $items['admin/settings/creativecommons/site'] = array(
     'title' => 'site license',
-    'page callback' => 'drupal_get_form',//'creativecommons_configure',
+    'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_configure_site'),
     'access arguments' => array('administer creative commons'),
     'type' => MENU_LOCAL_TASK
@@ -218,7 +218,7 @@ function creativecommons_get_license_array() {
  * Return xml defining available creative commons licenses
  */
 function creativecommons_get_license_xml() {
-  return creativecommons_return_xml('classes', 'http://api.creativecommons.org/rest/');
+  return creativecommons_return_xml('classes', 'http://api.creativecommons.org/rest/1.5');
 }
 
 /**
@@ -228,7 +228,8 @@ function creativecommons_get_license_xml() {
  * $hrs		file should be updated if older then X number of hours
  * $update	force update of the file
  */
-function creativecommons_return_xml($filename, $uri, $hrs = 24, $update = FALSE) {
+//TODO: hours should be set back to 24 when development is over
+function creativecommons_return_xml($filename, $uri, $hrs = 0, $update = FALSE) {
   // check for xml variable
   $xml = variable_get('creativecommons_'. $filename, NULL);
   if ($xml) {
@@ -446,34 +447,35 @@ function creativecommons_select_license_form($node, $prefix) {
   }
 
   foreach ($question_array as $q => $a) {
+    // Set options from answers
     $options = array();
     foreach ($a['answers'] as $k => $v)
       $options[$v] = $k;
-    if (count($a['answers']) <= 3) {
-      $form['select_license_form'][$prefix .''][''. $q] = array(
-        '#type' => 'radios',
-        '#title' => str_replace(':', '', $a['question']),
-        '#default_value' => $node->cc->$q,
-        '#options' => $options,
-        '#description' => $a['description'],
-        '#required' => TRUE,
-        '#attributes' => NULL,
-        '#tree' => TRUE,
-      );
+
+    $required = TRUE;    
+    if ($q == 'jurisdiction'){
+      $required = FALSE;
+      
+      // Sort by Jurisdiction name
+      asort($options);
+      
+      // Move special case 'Generic' to front
+      $generic = array(''=>$options['']);
+      unset($options['']);
+      $options = array_merge($generic, $options);
     }
-    else {
-      $form['select_license_form'][$prefix .''][''. $q] = array(
-        '#type' => 'select',
-        '#title' => str_replace(':', '', $a['question']),
-        '#default_value' => $node->cc->$q,
-        '#options' => $options,
-        '#description' => $a['description'],
-        '#extra' => 0,
-        '#multiple' => NULL,
-        '#required' => TRUE,
-         '#tree' => TRUE,
-      );
-    }
+
+    
+    $form['select_license_form'][$prefix .''][''. $q] = array(
+      '#type' => (count($a['answers']) <= 3 ? 'radios' : 'select'),
+      '#title' => str_replace(':', '', $a['question']),
+      '#default_value' => $node->cc->$q,
+      '#options' => $options,
+      '#description' => $a['description'],
+      '#required' => $required,
+      '#tree' => TRUE,
+      
+    );
   }
 
 return system_settings_form($form);
@@ -529,10 +531,7 @@ function creativecommons_get_questions_array($license_id) {
 function creativecommons_get_questions_xml($license_id) {
   if ($license_id != 'none' && !is_null($license_id)) {
     $filename = $license_id .'.xml';
-    //TODO: <nathany> balleyne: that's not a valid API call
-    // <nathany> should be /rest/1.5/ or /rest/dev/
-    // <johndoigiii> balleyne, I think at the very least the rest call should be updated to use 1.5
-    $uri = 'http://api.creativecommons.org/rest/license/'. $license_id .'/';
+    $uri = 'http://api.creativecommons.org/rest/1.5/license/'. $license_id .'/';
     return creativecommons_return_xml($filename, $uri);
   }
   return;
@@ -609,7 +608,6 @@ function creativecommons_footer() {
       $output .= '<!-- '. $cc->get_rdf() .' -->';
     return $output;
   }
-  return;
 }
 
 
