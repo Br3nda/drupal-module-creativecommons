@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.2 2009/06/16 19:53:15 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.3 2009/06/16 21:01:47 balleyne Exp $
 
 
 ##################################################
@@ -77,7 +77,7 @@ class creativecommons_license {
       $headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
       // request
-      $uri = 'http://api.creativecommons.org/rest/license/'. $id .'/issue';
+      $uri = 'http://api.creativecommons.org/rest/1.5/license/'. $id .'/issue';
 
       foreach ($questions as $q => $a)
         $answer_xml .= "<$q>". $a['selected'] ."</$q>";
