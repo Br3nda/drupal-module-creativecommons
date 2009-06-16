@@ -1,4 +1,10 @@
 <?php
+// $Id: creativecommons.install,v 1.1.2.1 2009/06/16 19:37:14 balleyne Exp $
+
+/**
+ * @file
+ * Creative Commons Drupal module install file.
+ */
 
 /**
  * Implementation of hook_schema().
@@ -23,16 +29,16 @@ function creativecommons_schema() {
     ),
     'primary key' => array('nid'),
   );
-  
+
   return $schema;
 }
 
 /**
- * Implementation of hook_install()
+ * Implementation of hook_install().
  */
 function creativecommons_install() {
   $result = drupal_install_schema('creativecommons');
-  
+
   if (count($result) > 0) {
     drupal_set_message(t('Creative Commons module installed.'));
   }
@@ -42,7 +48,7 @@ function creativecommons_install() {
 }
 
 /**
- * Implementation of hook_uninstall()
+ * Implementation of hook_uninstall().
  */
 function creativecommons_uninstall() {
   drupal_uninstall_schema('creativecommons');
