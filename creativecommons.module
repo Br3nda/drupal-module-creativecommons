@@ -1,9 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.3 2009/06/20 01:35:25 balleyne Exp $
-
-
-##################################################
-##################################################
+// $Id: creativecommons.module,v 1.9.2.4 2009/06/20 02:04:48 balleyne Exp $
 
 /**
  * @file
@@ -24,9 +20,9 @@
  *
  */
 
-##################################################
-##################################################
-
+define('CC_PATH', drupal_get_path('module', 'creativecommons'));
+define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
+define('CC_JS_PATH', base_path() . CC_PATH .'/js/');
 
 require_once('creativecommons.class.php');
 
@@ -107,37 +103,19 @@ function creativecommons_help($path, $arg) {
  */
 function creativecommons_settings_form() {
 
-  $form['creativecommons_general'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('General settings'),
-  );
-
-  $form['creativecommons_general']['creativecommons_image_path'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Creative Commons image path'),
-    '#default_value' => variable_get('creativecommons_image_path', 'modules/creativecommons/images'),
-    '#size' => 50,
-    '#maxlength' => 255,
-    '#description' => t('A file system path where the Creative Commons images will reside. This directory must exist and be publicly accessible. Copy the images included with the Creative Commons module to this directory.'),
-    '#attributes' => NULL,
-    '#required' => TRUE,
-  );
-  $form['creativecommons_general']['creativecommons_js_path'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Creative Commons javascript path'),
-    '#default_value' => variable_get('creativecommons_js_path', 'modules/creativecommons/js'),
-    '#size' => 50,
-    '#maxlength' => 255,
-    '#description' => t('A file system path where the Creative Commons javascript code will reside. This directory must exist and be publicly accessible. Copy the javascript (.js) file included with the Creative Commons module to this directory.'),
-    '#attributes' => NULL,
-    '#required' => TRUE,
-  );
-
-//--------------- TODO: error caused here -- need to be more descriptive
-//if (!$selected_licenses = variable_get('creativecommons_available_licenses', array()))
+/*
+ * TODO: This is a bad tactic. Error is vague, and it doesn't work if you select
+ * and then *unselect* licenses (because it depends on the variable existing,
+ * doesn't actually check that it has any available licenses).
+ * Best to revamp this.
+ *
+ * Also, it still displays the error until you reload once after having selected
+ * available licenses.
+ */
+if (!$selected_licenses = variable_get('creativecommons_available_licenses', array()))
     //form_set_error('creativecommons_available_licenses',
-      //t('You currently have no license options selected. You must enable at least one license or the module will not function properly'));
-$selected_licenses = variable_get('creativecommons_available_licenses', array());//TODO
+      drupal_set_message('You currently have no license options selected. You must enable at least one license or the module will not function properly', 'error');
+
 
   $license_array_keys = creativecommons_get_license_array();
   $metadata_types_keys = creativecommons_get_metadata_types();
@@ -790,16 +768,13 @@ function creativecommons_form($node) {
   if (!$selected_licenses = variable_get('creativecommons_available_licenses', NULL))
     return;
 
-  $cc_img_path = variable_get('creativecommons_image_path', 'modules/creativecommons/images');
-  $cc_js_path = variable_get('creativecommons_js_path', 'modules/creativecommons/js');
-
-  $cc_img = '<img src="'. $cc_img_path .'/cc-choose-license.gif" alt="Creative Commons license" />';
+  $cc_img = '<img src="'. CC_IMG_PATH .'/cc-choose-license.gif" alt="Creative Commons license" />';
   $cc_txt = '<p><a href="http://creativecommons.org/learn/licenses/" target="_blank">Creative Commons licenses</a> help you share your work while keeping your copyright. Other people can copy and distribute your work provided they give you credit -- and only on the conditions you specify here. This form helps you choose those conditions. Visit the Creative Commons website for an <a href="http://creativecommons.org/about/licenses/meet-the-licenses">explanation of the different licenses</a>.
 
 Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Domain license</a> if you want to offer your work with no conditions.</p>';
 
   // add javascript to <head>
-  $header = "\n  <script type=\"text/javascript\" src=\"". $cc_js_path ."/cc_toggle.js\"></script>";
+  $header = "\n  <script type=\"text/javascript\" src=\"". CC_JS_PATH ."/cc_toggle.js\"></script>";
   drupal_set_html_head($header);
 
   // built html output
