@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.2 2009/06/20 01:20:32 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.3 2009/06/20 01:35:25 balleyne Exp $
 
 
 ##################################################
@@ -26,8 +26,6 @@
 
 ##################################################
 ##################################################
-
-//TODO: API error handling -- what happens when it's not accessible?
 
 
 require_once('creativecommons.class.php');
@@ -234,7 +232,12 @@ function creativecommons_api_request($uri, $headers = array(), $method = 'GET', 
   //TODO: set the interface root as a drupal variable? (so that it could be changed, to dev, for example)
   $uri = 'http://api.creativecommons.org/rest/1.5'. $uri;
 
-  return drupal_http_request($uri, $headers, $method, $data);
+  $result = drupal_http_request($uri, $headers, $method, $data);
+
+  if ($result->error)
+    drupal_set_message('Error accessing CC API: '. $result->error, 'error', FALSE);
+
+  return $result;
 }
 
 /**
