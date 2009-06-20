@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.3 2009/06/16 21:01:47 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.4 2009/06/20 01:20:32 balleyne Exp $
 
 
 ##################################################
@@ -77,7 +77,7 @@ class creativecommons_license {
       $headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
       // request
-      $uri = 'http://api.creativecommons.org/rest/1.5/license/'. $id .'/issue';
+      $uri = '/license/'. $id .'/issue';
 
       foreach ($questions as $q => $a)
         $answer_xml .= "<$q>". $a['selected'] ."</$q>";
@@ -85,7 +85,7 @@ class creativecommons_license {
 
       // post to cc api
       $post_data = 'answers='. urlencode($answer_xml) ."\n";
-      $response = drupal_http_request($uri, $headers, 'POST', $post_data);
+      $response = creativecommons_api_request($uri, $headers, 'POST', $post_data);
       if ($response->code == 200)
         return $response->data;
     }

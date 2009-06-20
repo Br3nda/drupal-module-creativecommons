@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.1 2009/06/16 20:43:45 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.2 2009/06/20 01:20:32 balleyne Exp $
 
 
 ##################################################
@@ -26,6 +26,8 @@
 
 ##################################################
 ##################################################
+
+//TODO: API error handling -- what happens when it's not accessible?
 
 
 require_once('creativecommons.class.php');
@@ -218,18 +220,32 @@ function creativecommons_get_license_array() {
  * Return xml defining available creative commons licenses
  */
 function creativecommons_get_license_xml() {
-  return creativecommons_return_xml('classes', 'http://api.creativecommons.org/rest/1.5');
+  return creativecommons_return_xml('classes');
+}
+
+/**
+ * Send HTTP Request to CC API services.
+ * $uri     relative uri of file content on CC api site, not inclucing interface root (can be '')
+ * $headers An array containing an HTTP header => value pair.
+ * $method  A string defining the HTTP request to use.
+ * $data    A string containing data to include in the request.
+ */
+function creativecommons_api_request($uri, $headers = array(), $method = 'GET', $data = NULL) {
+  //TODO: set the interface root as a drupal variable? (so that it could be changed, to dev, for example)
+  $uri = 'http://api.creativecommons.org/rest/1.5'. $uri;
+
+  return drupal_http_request($uri, $headers, $method, $data);
 }
 
 /**
  * Refreshes cached XML if file is greater than $hrs hours old
  * $filename	name up file to be retrieved/updated
- * $uri		uri of file content on CC api site
+ * $uri		uri of file content on CC api site, beyond the interface root (if any)
  * $hrs		file should be updated if older then X number of hours
  * $update	force update of the file
  */
 //TODO: hours should be set back to 24 when development is over
-function creativecommons_return_xml($filename, $uri, $hrs = 0, $update = FALSE) {
+function creativecommons_return_xml($filename, $uri = '', $hrs = 0, $update = FALSE) {
   // check for xml variable
   $xml = variable_get('creativecommons_'. $filename, NULL);
   if ($xml) {
@@ -251,7 +267,7 @@ function creativecommons_return_xml($filename, $uri, $hrs = 0, $update = FALSE) 
   // request xml
   if ($update) {
     $headers = array();
-    $result = drupal_http_request($uri, $headers);
+    $result = creativecommons_api_request($uri, $headers);
     switch ($result->code) {
       case 200:
         variable_set('creativecommons_'. $filename, $result->data);
@@ -452,20 +468,20 @@ function creativecommons_select_license_form($node, $prefix) {
     foreach ($a['answers'] as $k => $v)
       $options[$v] = $k;
 
-    $required = TRUE;    
-    if ($q == 'jurisdiction'){
+    $required = TRUE;
+    if ($q == 'jurisdiction') {
       $required = FALSE;
-      
+
       // Sort by Jurisdiction name
       asort($options);
-      
+
       // Move special case 'Generic' to front
-      $generic = array(''=>$options['']);
+      $generic = array('' => $options['']);
       unset($options['']);
       $options = array_merge($generic, $options);
     }
 
-    
+
     $form['select_license_form'][$prefix .''][''. $q] = array(
       '#type' => (count($a['answers']) <= 3 ? 'radios' : 'select'),
       '#title' => str_replace(':', '', $a['question']),
@@ -474,7 +490,7 @@ function creativecommons_select_license_form($node, $prefix) {
       '#description' => $a['description'],
       '#required' => $required,
       '#tree' => TRUE,
-      
+
     );
   }
 
@@ -531,8 +547,7 @@ function creativecommons_get_questions_array($license_id) {
 function creativecommons_get_questions_xml($license_id) {
   if ($license_id != 'none' && !is_null($license_id)) {
     $filename = $license_id .'.xml';
-    $uri = 'http://api.creativecommons.org/rest/1.5/license/'. $license_id .'/';
-    return creativecommons_return_xml($filename, $uri);
+    return creativecommons_return_xml($filename, '/license/'. $license_id .'/');
   }
   return;
 }
