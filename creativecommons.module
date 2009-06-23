@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.4 2009/06/20 02:04:48 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.5 2009/06/23 05:31:40 balleyne Exp $
 
 /**
  * @file
@@ -19,6 +19,10 @@
  *   under the terms of the LGPL license (now, GPLv2 for drupal.org).
  *
  */
+
+//TODO: mandatory license option (like cc lite), instead of 'no license' license
+//TODO: hook_block
+//TODO: scrap 'site license' in favour of 'default license', which can be displayed site-wide
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
@@ -57,7 +61,7 @@ function creativecommons_menu() {
     'title' => 'Creative Commons',
     'description' => 'Configure the Creative Commons settings.',
     'page callback' => 'drupal_get_form',
-    'page arguments' =>  array('creativecommons_settings_form'),
+    'page arguments' =>  array('creativecommons_settings'),
     'access arguments' => array('administer creative commons')
   );
 
@@ -70,7 +74,7 @@ function creativecommons_menu() {
   $items['admin/settings/creativecommons/site'] = array(
     'title' => 'site license',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('creativecommons_configure_site'),
+    'page arguments' => array('creativecommons_site_license'),
     'access arguments' => array('administer creative commons'),
     'type' => MENU_LOCAL_TASK
   );
@@ -97,26 +101,11 @@ function creativecommons_help($path, $arg) {
   }
 }
 
-
 /**
- * General Creative Commons settings form
+ * General Creative Commons settings page.
  */
-function creativecommons_settings_form() {
-
-/*
- * TODO: This is a bad tactic. Error is vague, and it doesn't work if you select
- * and then *unselect* licenses (because it depends on the variable existing,
- * doesn't actually check that it has any available licenses).
- * Best to revamp this.
- *
- * Also, it still displays the error until you reload once after having selected
- * available licenses.
- */
-if (!$selected_licenses = variable_get('creativecommons_available_licenses', array()))
-    //form_set_error('creativecommons_available_licenses',
-      drupal_set_message('You currently have no license options selected. You must enable at least one license or the module will not function properly', 'error');
-
-
+function creativecommons_settings() {
+  $selected_licenses = variable_get('creativecommons_available_licenses', array());
   $license_array_keys = creativecommons_get_license_array();
   $metadata_types_keys = creativecommons_get_metadata_types();
 
@@ -124,13 +113,23 @@ if (!$selected_licenses = variable_get('creativecommons_available_licenses', arr
     '#type' => 'fieldset',
     '#title' => t('License selection'),
   );
+
   $form['creativecommons_license']['creativecommons_available_licenses'] = array(
-    '#type' => 'checkboxes',
+    '#type' => 'select',
     '#title' => t('Available licenses'),
     '#default_value' => $selected_licenses,
     '#options' => $license_array_keys,
-    '#description' => t('Select the licenses you would like to make available to your users.'),
+    '#description' => t('Select the license types to make available to users.'),
+    '#multiple' => TRUE,
   );
+
+  $form['creativecommons_license']['creativecommons_mandatory'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Mandatory license specification'),
+    '#description' => t('Specifies whether or not the user is required to specify a license for content on the site.'),
+    '#default_value' => variable_get('creativecommons_mandatory', 0),
+  );
+
   $form['creativecommons_license']['creativecommons_required'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Required metadata fields'),
@@ -168,35 +167,118 @@ if (!$selected_licenses = variable_get('creativecommons_available_licenses', arr
     '#default_value' => variable_get('creativecommons_rdf', TRUE),
     '#description' => t('Attach license information within the HTML to let your visitors know what license applies to your works.'),
   );
-
   return system_settings_form($form);
 
 }
 
 /**
- * Return array of licenses parsed from licenses.xml
+ * Validate general creative commons settings.
  */
-function creativecommons_get_license_array() {
-  $license_xml = creativecommons_get_license_xml();
-  $parser = xml_parser_create();
-  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
-  xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
-  xml_parse_into_struct($parser, $license_xml, $values, $index);
-  xml_parser_free($parser);
-  $types = array();
-  $types['none'] = 'No license';
-  foreach ($values as $key) {
-    if ($key['tag'] == 'license' && $key['level'] == 2)
-      $types[$key['attributes']['id']] = $key['value'];
-  }
-  return $types;
+function creativecommons_settings_validate(&$form, $form_state) {
+//TODO: should this be here? (no errors displays when settings page first loaded)  should it set_message or set_error? (is it permissible to select no licenses?)
+  if (empty($form_state['values']['creativecommons_available_licenses']))
+    //form_set_error('creativecommons_avaiable_licenses', 'You must enable at least one license for this module to work properly.');
+    drupal_set_message('No licenses are enabled.', 'error');
 }
 
 /**
- * Return xml defining available creative commons licenses
+ * Return array of license classes parsed from licenses.xml
+ *
+ * @return array of license classes in the form id => title
  */
-function creativecommons_get_license_xml() {
-  return creativecommons_return_xml('classes');
+function creativecommons_get_license_classes() {
+  $classes = array();
+  $classes_xml = creativecommons_return_xml('classes');
+  $parser = xml_parser_create();
+  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
+  xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
+  xml_parse_into_struct($parser, $classes_xml, $classes_array, $index);
+  xml_parser_free($parser);
+  foreach ($classes_array as $key)
+    if ($key['tag'] == 'license' && $key['level'] == 2)
+      $classes[$key['attributes']['id']] = $key['value'];
+  return $classes;
+}
+
+
+/**
+ * Return array of all available licenses, grouped by class
+ *
+ * @param $options - optional array of options for CC API simple license
+ * chooser, as per: http://api.creativecommons.org/docs/readme_15.html#simple-chooser
+ */
+//TODO: optimize this code, can be more concise; refactor
+function creativecommons_get_license_array($options = NULL) {
+  $classes = creativecommons_get_license_classes();
+
+  $types = array();
+  foreach ($classes as $id => $name)
+    $types[$id] = array();
+
+  // Manual adjustments for 'standard' class
+  if ($classes['standard']) {
+    $parser = xml_parser_create();
+    xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
+    xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
+    $uri = 'simple/chooser';
+    if ($options)
+      $uri .= '?'. http_build_query($options);
+    $standard_xml = '<standard>'. creativecommons_return_xml('simple', $uri) .'</standard>';
+
+    xml_parse_into_struct($parser, $standard_xml, $standard_licenses, $index);
+    xml_parser_free($parser);
+
+    foreach ($standard_licenses as $key) {
+      if ($key['tag'] == 'option' && $key['level'] == 2) {
+        // strip out license type identifier from uri
+        $uri = explode('/', $key['attributes']['value']);
+        $license_type = $uri[4];
+
+        // strip out jurisdiction and version from license list
+        $name_parts = explode(' ', $key['value']);
+        $version_part = count($name_parts);
+        $i = 0;
+        foreach ($name_parts as $part) {
+          if (is_numeric($part))
+            $version_part = $i;
+          $i++;
+        }
+        $name = $name_parts[0];
+        for ($i=1;$i<$version_part;$i++)
+          $name .= ' '. $name_parts[$i] ;
+
+        $types['standard'][$license_type] = $name;
+      }
+    }
+  }
+
+  // Manual adjustments for 'publicdomain' class
+  if ($classes['publicdomain']) {
+    $types['publicdomain']['publicdomain'] = $types['standard']['publicdomain'];
+    unset($types['standard']['publicdomain']);
+  }
+
+  // Manual adjustments for 'recombo' class
+  if ($classes['recombo']) {
+    $types['recombo'] = array();
+    //TODO: can we retrieve this from the API?
+    $recombo = array(
+      'http://creativecommons.org/licenses/sampling+/1.0/' => 'Sampling Plus 1.0',
+      'http://creativecommons.org/licenses/nc-sampling+/1.0/' => 'NonCommercial Sampling Plus 1.0',
+    );
+    foreach ($recombo as $uri => $title) {
+      $uri = explode('/', $uri);
+
+      $types['recombo'][$uri[4]] = $title;
+    }
+  }
+
+  // format array with names at the end (for locale support)
+  $readable_types = array();
+  foreach ($classes as $id => $title)
+    $readable_types[$title] = $types[$id];
+
+  return $readable_types;
 }
 
 /**
@@ -208,7 +290,7 @@ function creativecommons_get_license_xml() {
  */
 function creativecommons_api_request($uri, $headers = array(), $method = 'GET', $data = NULL) {
   //TODO: set the interface root as a drupal variable? (so that it could be changed, to dev, for example)
-  $uri = 'http://api.creativecommons.org/rest/1.5'. $uri;
+  $uri = 'http://api.creativecommons.org/rest/1.5'. (strpos($uri, '/') === 0 ? $uri : '/'. $uri);
 
   $result = drupal_http_request($uri, $headers, $method, $data);
 
@@ -327,7 +409,7 @@ function creativecommons_configure_site_license_display() {
 /**
  * Creative Commons site license settings form
  */
-function creativecommons_configure_site() {
+function creativecommons_site_license() {
   global $base_url;
   $prefix = 'creativecommons_site';
 
@@ -398,7 +480,7 @@ function creativecommons_select_license_form($node, $prefix) {
   $extra['onchange'] = "this.form.submit();"; //TODO: this should load appropriate questions, but *not* submit the form
 
   // available license types
-  $types = creativecommons_get_license_array();
+  $types = creativecommons_get_license_classes();
 
   if ($avail = variable_get('creativecommons_available_licenses', NULL)) {
     foreach ($types as $k => $v) {
@@ -1002,6 +1084,7 @@ function creativecommons_validate(&$node) {
   $node->cc = $cc;
 
 }
+
 
 /**
   *  Debug code
