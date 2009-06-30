@@ -1,9 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.4 2009/06/20 01:20:32 balleyne Exp $
-
-
-##################################################
-##################################################
+// $Id: creativecommons.class.php,v 1.3.4.5 2009/06/30 11:44:44 balleyne Exp $
 
 /**
  * @file
@@ -24,10 +20,8 @@
  *
  */
 
-##################################################
-##################################################
-
 //TODO: PHP5
+//TODO: CC0 support
 class creativecommons_license {
   // license attributes
   var $license_uri;
@@ -43,28 +37,58 @@ class creativecommons_license {
   /**
    * Initialize object
    */
-  function creativecommons_license($license_type, $questions, $metadata = array()) {
+  function __construct($license, $questions = NULL, $metadata = array()) {
+    // Destruct if no license value provided
+    if (!$license){
+      unset($this);
+      return;
+    }
+    
+    
     $this->permissions = array();
     $this->permissions['requires'] = array();
     $this->permissions['prohibits'] = array();
     $this->permissions['permits'] = array();
-    $this->license_type = $license_type;
 
-    $xml = $this->post_answers($questions);
+    if ($questions) {
+      $this->license_type = $license;
+      $xml = $this->post_answers($questions);
+      foreach ($questions as $q => $a)
+        $this->$q = $a['selected'];
+    }
+    else {
+      $this->license_type = 'standard'; // TODO: this is assumed...
+      $xml = $this->license_details($license);
+    }
+      
+      
     if ($xml) {
       $parser = xml_parser_create();
       xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
       xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
-      xml_parse_into_struct($parser, $xml, $values, $index);
+      xml_parse_into_struct($parser, $xml, $values, $tags);
       xml_parser_free($parser);
-      $this->extract_values($values);
-      foreach ($questions as $q => $a)
-        $this->$q = $a['selected'];
+      $this->extract_values($values, $tags);
     }
+
     $this->metadata = $metadata;
+    
+    // TODO: is there a better way to do this? will this work with questions too?
+    preg_match('/<html>(.*)<\/html>/', $xml, $matches) ? 'yes' : 'no';
+    $this->html = $matches[1];
   }
 
 
+  /**
+   * Get license details from API by uri
+   */
+  function license_details($license_uri){
+    $response = creativecommons_api_request('/details?license-uri='. urlencode($license_uri));
+    if ($response->code == 200)
+      return $response->data;
+    //TODO: error handling   
+  }
+  
   /**
    * Post answer data to creative commons web api, return xml response.
    */
@@ -96,9 +120,13 @@ class creativecommons_license {
   /**
    * Extract values from array of xml data.
    */
-  function extract_values($values) {
+  function extract_values($values, $tags) {
     foreach ($values as $xn) {
       switch ($xn['tag']) {
+        //TODO: better error handling
+        case 'error':
+          drupal_set_message('Error retrieving license information from CC API: '. $values[2]['value'], 'error');
+        break;
 
         case 'license-uri':
           $this->license_uri = $xn['value'];
@@ -145,8 +173,7 @@ class creativecommons_license {
    * - if ($site_license) then force return of standard license image
    */
   function get_images($site_license = FALSE) {
-    $img_path = variable_get('creativecommons_image_path', 'modules/creativecommons/images');
-    $default = array($img_path .'/somerights20.gif');
+    $default = array(CC_IMG_PATH .'/somerights20.gif');
     if ($site_license)
       $display = 1;
     else
@@ -163,35 +190,35 @@ class creativecommons_license {
       case(2):
         // public domain license
         if ($this->license_type == 'publicdomain') {
-          $images[] = $img_path .'/icon-publicdomain.png';
+          $images[] = CC_IMG_PATH .'/icon-publicdomain.png';
           break;
         }
 
         // sampling license
         else if ($this->license_type == 'recombo') {
           if ($this->license_name == 'Sampling 1.0') {
-            $images[] = $img_path .'/icon-sampling.png';
+            $images[] = CC_IMG_PATH .'/icon-sampling.png';
           }
           else if ($this->license_name == 'Sampling Plus 1.0') {
-            $images[] = $img_path .'/icon-samplingplus.png';
+            $images[] = CC_IMG_PATH .'/icon-samplingplus.png';
           }
           else if ($this->license_name == 'NonCommericial Sampling Plus 1.0') {
-            $images[] = $img_path .'/icon-noncommercial.png';
-            $images[] = $img_path .'/icon-samplingplus.png';
+            $images[] = CC_IMG_PATH .'/icon-noncommercial.png';
+            $images[] = CC_IMG_PATH .'/icon-samplingplus.png';
           }
-          $images[] = $img_path .'/icon-attribution.png';
+          $images[] = CC_IMG_PATH .'/icon-attribution.png';
         }
 
         // creative commons / other license
         else {
           if (in_array('http://web.resource.org/cc/Attribution', $this->permissions['requires']))
-            $images[] = $img_path .'/icon-attribution.png';
+            $images[] = CC_IMG_PATH .'/icon-attribution.png';
           if (in_array('http://web.resource.org/cc/CommercialUse', $this->permissions['prohibits']))
-            $images[] = $img_path .'/icon-noncommercial.png';
+            $images[] = CC_IMG_PATH .'/icon-noncommercial.png';
           if (!in_array('http://web.resource.org/cc/DerivativeWorks', $this->permissions['permits']))
-            $images[] = $img_path .'/icon-derivative.png';
+            $images[] = CC_IMG_PATH .'/icon-derivative.png';
           if (in_array('http://web.resource.org/cc/ShareAlike', $this->permissions['requires']))
-            $images[] = $img_path .'/icon-sharealike.png';
+            $images[] = CC_IMG_PATH .'/icon-sharealike.png';
         }
         break;
 
@@ -200,13 +227,13 @@ class creativecommons_license {
       default:
         switch ($this->license_type) {
           case 'standard':
-            $images[] = $img_path .'/img-somerights.gif';
+            $images[] = CC_IMG_PATH .'/img-somerights.gif';
             break;
           case 'publicdomain':
-            $images[] = $img_path .'/img-norights.gif';
+            $images[] = CC_IMG_PATH .'/img-norights.gif';
             break;
           case 'recombo':
-            $images[] = $img_path .'/img-recombo.gif';
+            $images[] = CC_IMG_PATH .'/img-recombo.gif';
             break;
           // generic 'some rights reserved' image
           default:
@@ -219,6 +246,12 @@ class creativecommons_license {
     return $images;
   }
 
+  /**
+   * Returns true if license set, false otherwise
+   */
+  function has_license(){
+    return !is_null($this->license_uri);
+  }
 
   /**
    * Return html containing license link (+ images)
@@ -226,10 +259,21 @@ class creativecommons_license {
   function get_html($site_license = FALSE) {
 
     // must have a license to display html
-    if (is_null($this->license_type) || $this->license_type == 'none')
+    if (!$this->has_license())
       return;
+      
+    $html = "\n<!--Creative Commons License-->\n". $this->html;
+    
+    if ($site_license) {
+      if ($footer_text = variable_get('creativecommons_site_license_additional_text', NULL))
+        $html .= '<br />'. $footer_text;
+    }
+    $html .= "<!--/Creative Commons License-->\n";
+    
+    return $html;
 
-    $txt = 'This work is licensed under a '.
+
+    /*$txt = 'This work is licensed under a '.
       l(t('Creative Commons License'),
         $this->license_uri,
         array(
@@ -270,13 +314,13 @@ class creativecommons_license {
     // display site footer text
     $html .= $txt;
     if ($site_license) {
-      if ($footer_text = variable_get('creativecommons_site_footer_text', NULL))
+      if ($footer_text = variable_get('creativecommons_site_license_additional_text', NULL))
         $html .= '<br />'. $footer_text;
       $html .= "</div>\n";
     }
     $html .= "<!--/Creative Commons License-->\n";
 
-    return $html;
+    return $html;*/
   }
 
 
@@ -286,8 +330,9 @@ class creativecommons_license {
   function get_rdf() {
 
     // must have a license to display rdf
-    if (is_null($this->license_type) || $this->license_type == 'none')
+    if (!$this->has_license())
       return;
+
 
     foreach ($this->rdf['attributes'] as $attr => $val)
       $a .= " $attr=\"$val\"";
