@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.5 2009/06/30 11:44:44 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.6 2009/06/30 21:31:18 balleyne Exp $
 
 /**
  * @file
@@ -22,6 +22,7 @@
 
 //TODO: PHP5
 //TODO: CC0 support
+//TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
 class creativecommons_license {
   // license attributes
   var $license_uri;
@@ -39,12 +40,12 @@ class creativecommons_license {
    */
   function __construct($license, $questions = NULL, $metadata = array()) {
     // Destruct if no license value provided
-    if (!$license){
+    if (!$license) {
       unset($this);
       return;
     }
-    
-    
+
+
     $this->permissions = array();
     $this->permissions['requires'] = array();
     $this->permissions['prohibits'] = array();
@@ -60,8 +61,8 @@ class creativecommons_license {
       $this->license_type = 'standard'; // TODO: this is assumed...
       $xml = $this->license_details($license);
     }
-      
-      
+
+
     if ($xml) {
       $parser = xml_parser_create();
       xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
@@ -72,7 +73,7 @@ class creativecommons_license {
     }
 
     $this->metadata = $metadata;
-    
+
     // TODO: is there a better way to do this? will this work with questions too?
     preg_match('/<html>(.*)<\/html>/', $xml, $matches) ? 'yes' : 'no';
     $this->html = $matches[1];
@@ -82,13 +83,12 @@ class creativecommons_license {
   /**
    * Get license details from API by uri
    */
-  function license_details($license_uri){
+  function license_details($license_uri) {
     $response = creativecommons_api_request('/details?license-uri='. urlencode($license_uri));
     if ($response->code == 200)
       return $response->data;
-    //TODO: error handling   
   }
-  
+
   /**
    * Post answer data to creative commons web api, return xml response.
    */
@@ -249,7 +249,7 @@ class creativecommons_license {
   /**
    * Returns true if license set, false otherwise
    */
-  function has_license(){
+  function has_license() {
     return !is_null($this->license_uri);
   }
 
@@ -261,19 +261,19 @@ class creativecommons_license {
     // must have a license to display html
     if (!$this->has_license())
       return;
-      
+
     $html = "\n<!--Creative Commons License-->\n". $this->html;
-    
+
     if ($site_license) {
       if ($footer_text = variable_get('creativecommons_site_license_additional_text', NULL))
         $html .= '<br />'. $footer_text;
     }
     $html .= "<!--/Creative Commons License-->\n";
-    
+
     return $html;
 
 
-    /*$txt = 'This work is licensed under a '.
+    /* $txt = 'This work is licensed under a '.
       l(t('Creative Commons License'),
         $this->license_uri,
         array(

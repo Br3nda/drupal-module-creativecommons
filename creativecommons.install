@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.1 2009/06/16 19:37:14 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.2 2009/06/30 21:31:18 balleyne Exp $
 
 /**
  * @file
@@ -19,12 +19,10 @@ function creativecommons_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE
       ),
-      'license' => array(
+      'data' => array(
         'description' => t('Creative Commons node license.'),
-        'type' => 'varchar',
+        'type' => 'text',
         'not null' => TRUE,
-        'length' => 12,
-        'default' => ''
       ),
     ),
     'primary key' => array('nid'),
