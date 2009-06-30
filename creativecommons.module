@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.7 2009/06/30 21:31:18 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.8 2009/06/30 23:57:08 balleyne Exp $
 
 /**
  * @file
@@ -21,8 +21,8 @@
  */
 
 //TODO: implement mandatory license option (like cc lite)
+//TODO: make site license another block so it's more flexible?
 //TODO: validate selected licenses against available licenses
-//TODO: hook_block
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: make CC question chooser an option
 
@@ -899,8 +899,16 @@ function creativecommons_xml($node) {
 }
 /**
  * Append html and rdf content to node.
+ *
+ * TODO: this is replaced by hook_blook, which can better display human readable
+ * license information, but hook_view() seems like it could be used for embedding
+ * more meaningful machine readable RDF information (e.g. associating author, title
+ * with content, etc.)
  */
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
+  // As the function is currently deprecated, the following line neuters it
+  return;
+  
   if ($node->cc) {
     // append html
     $output = $node->cc->get_html();
@@ -908,13 +916,59 @@ function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
     // append rdf
     if (variable_get('creativecommons_rdf', TRUE))
       $output .= "<!-- ". $node->cc->get_rdf() ." -->";
-
     if ($output) {
       $node->content['body']['#value'] .= '<p class="creativecommons">'. $output .'</p>';
       if ($teaser)
         $node->content['teaser']['#value'] .= '<p class="creativecommons">'. $output .'</p>';
     }
+    
     return $node;
+  }
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function creativecommons_block($op='list', $delta=0, $edit = array()) { 
+  // listing of blocks, such as on the admin/block page
+  if ($op == "list") { 
+    $blocks[0] = array(
+      'info' => t('Creative Commons license'),
+      'weight' => 0, 
+      'enabled' => 1,   // default make it enabled 
+      'region' => 'left', //TODO: content
+      'theme'=>'garland',
+    );
+    
+    // TODO: separate block for site license? or just an option...
+    
+    return $blocks;
+  } 
+  elseif ($op == 'view') {
+    switch ($delta) {
+      case 0:
+        if (!is_numeric(arg(1))) {
+          return;
+        }
+        
+        $nid = (int)arg(1);
+        $node = node_load(array('nid'=>$nid));
+        
+        if ( $node && arg(0) == 'node' && ( $node->cc ) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
+          // append html
+          $output = $node->cc->get_html();
+
+          // append rdf
+          if (variable_get('creativecommons_rdf', TRUE))
+            $output .= "<!-- ". $node->cc->get_rdf() ." -->";
+            
+          if ($output) { 
+            $block['content'] =  '<p class="creativecommons">'. $output .'</p>';
+          }
+        }
+        
+      return $block;
+    }
   }
 }
 
