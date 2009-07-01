@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.6 2009/06/30 21:31:18 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.7 2009/07/01 08:43:17 balleyne Exp $
 
 /**
  * @file
@@ -158,7 +158,13 @@ class creativecommons_license {
     }
   }
 
-
+  /**
+   * Return full license name.
+   */
+  function get_full_license_name(){
+    $type = $this->license_type == 'standard' ? 'Creative Commons ' : '';
+    return $type . $this->license_name;
+  }
   /**
    * Set a value in the metadata array
    */

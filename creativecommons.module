@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.8 2009/06/30 23:57:08 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.9 2009/07/01 08:43:17 balleyne Exp $
 
 /**
  * @file
@@ -25,6 +25,7 @@
 //TODO: validate selected licenses against available licenses
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: make CC question chooser an option
+//TODO: rename available_licenses to available_license_types
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
@@ -316,14 +317,17 @@ function creativecommons_select_license_form($node, $prefix, $simple = TRUE) {
   // load available licenses
   $types = creativecommons_get_available_licenses(array('jurisdiction' => variable_get('creativecommons_jurisdiction', '')), TRUE);
 
+  $cc = $node->cc ? $node->cc : creativecommons_get_default_license();
+  
+  // Check to see if selected license is available
+  if (!creativecommons_is_available_license($cc->license_uri, $types))
+    drupal_set_message('The "'. $cc->get_full_license_name() .'" license is no longer available. Please select another license.', 'warning');
 
   if ($simple) {
-
-    $default_uri = $node->cc ? $node->cc->license_uri : creativecommons_get_default_license_uri();
     $form['select_license_form'][$prefix .'_license'] = array(
       '#type' => 'select',
       '#title' => t('Select a license'),
-      '#default_value' => $default_uri,
+      '#default_value' => $cc->license_uri,
       '#options' => $types,
       '#attributes' => $extra,
       '#description' => NULL,
@@ -387,7 +391,7 @@ function creativecommons_get_default_license() {
 }
 
 /**
- * Return default license URI
+ * Return default license URI.
  */
 function creativecommons_get_default_license_uri() {
   $cc = creativecommons_get_default_license();
@@ -571,25 +575,36 @@ function creativecommons_get_available_licenses($options = NULL, $first_entry_bl
   if ($first_entry_blank)
     $licenses = array_merge(array(''), $licenses);
 
-  return creativecommons_remove_unavailable_licenses($licenses);
+  $available_licenses = variable_get('creativecommons_available_licenses', array());
+  
+  return creativecommons_remove_unavailable_licenses($licenses, $available_licenses);
 }
 
 /**
  * Takes a list of licenses and unsets any which are not available in the site settings.
  * @param $list  list of licenses to check
  */
-function creativecommons_remove_unavailable_licenses($list) {
-  $available_licenses = variable_get('creativecommons_available_licenses', array());
-
+function creativecommons_remove_unavailable_licenses($list, $available_licenses) {
   foreach ($list as $key => $value) {
     if (is_array($value))
-      $list[$key] = creativecommons_remove_unavailable_licenses(&$value);
+      $list[$key] = creativecommons_remove_unavailable_licenses(&$value, $available_licenses);
     else if (!in_array($key, $available_licenses) && !in_array(creativecommons_get_license_type_from_uri($key), $available_licenses))
       unset($list[$key]);
   }
 
   return $list;
 }
+
+/**
+ * Return true if license is available, false otherwise.
+ */
+function creativecommons_is_available_license($license_uri) {
+  $available_licenses = variable_get('creativecommons_available_licenses', array());
+  $license_type = creativecommons_get_license_type_from_uri($license_uri);
+
+  return in_array($license_type, $available_licenses);
+}
+
 /**
  * Send HTTP Request to CC API services.
  * $uri     relative uri of file content on CC api site, not inclucing interface root (can be '')
