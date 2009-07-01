@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.7 2009/07/01 08:43:17 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.8 2009/07/01 09:19:41 balleyne Exp $
 
 /**
  * @file
@@ -144,15 +144,10 @@ class creativecommons_license {
           break;
 
         case 'permits':
-          $this->permissions['permits'][] = current($xn['attributes']);
-          break;
-
         case 'prohibits':
-          $this->permissions['prohibits'][] = current($xn['attributes']);
-          break;
-
         case 'requires':
-          $this->permissions['requires'][] = current($xn['attributes']);
+          if (!in_array(current($xn['attributes']), $this->permissions[$xn['tag']]))
+            $this->permissions[$xn['tag']][] = current($xn['attributes']);
           break;
       }
     }
