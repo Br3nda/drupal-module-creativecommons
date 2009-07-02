@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.9 2009/07/01 08:43:17 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.10 2009/07/02 23:18:27 balleyne Exp $
 
 /**
  * @file
@@ -20,12 +20,16 @@
  *
  */
 
+//TODO: installation guidance
+//TODO: set notification message when default license gets set
 //TODO: implement mandatory license option (like cc lite)
 //TODO: make site license another block so it's more flexible?
-//TODO: validate selected licenses against available licenses
+//TODO: validate selected licenses against available licenses (done for default licenses, but both a form_set_error and drupal_set_message get displayed on failed POST)
+//  license validation doesn't handle blanks well yet...
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: make CC question chooser an option
 //TODO: rename available_licenses to available_license_types
+//TODO: move cc_settingS_validate warning to somewhere else... needed for license selection form as well
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
@@ -199,7 +203,7 @@ function creativecommons_settings_validate(&$form, $form_state) {
 //TODO: should this be here? (no errors displays when settings page first loaded)  should it set_message or set_error? (is it permissible to select no licenses?)
   if (empty($form_state['values']['creativecommons_available_licenses']))
     //form_set_error('creativecommons_avaiable_licenses', 'You must enable at least one license for this module to work properly.');
-    drupal_set_message('No licenses are enabled.', 'error');
+    drupal_set_message('No licenses are enabled.', 'warning');
 }
 
 /**
@@ -213,10 +217,13 @@ function creativecommons_default_license() {
     // save license data
     $license_uri = $_POST[$prefix .'_license'];
     unset($_POST[$prefix .'_license']);
+    
     $cc = new creativecommons_license($license_uri);
+    
     $cc_data = serialize($cc);
     // save serialized data
     variable_set($prefix .'_license', $cc_data);
+
     // TODO: is this overkill?
     unset($_POST); //since we handled this ourselves
 
@@ -264,7 +271,6 @@ function creativecommons_default_license() {
 
   return system_settings_form($display);
 }
-
 
 /**
  * Creative Commons site license display settings form
@@ -320,7 +326,7 @@ function creativecommons_select_license_form($node, $prefix, $simple = TRUE) {
   $cc = $node->cc ? $node->cc : creativecommons_get_default_license();
   
   // Check to see if selected license is available
-  if (!creativecommons_is_available_license($cc->license_uri, $types))
+  if ($cc && !creativecommons_is_available_license($cc->license_uri, $types))
     drupal_set_message('The "'. $cc->get_full_license_name() .'" license is no longer available. Please select another license.', 'warning');
 
   if ($simple) {
