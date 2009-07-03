@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.10 2009/07/02 23:18:27 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.11 2009/07/03 21:43:11 balleyne Exp $
 
 /**
  * @file
@@ -22,12 +22,12 @@
 
 //TODO: installation guidance
 //TODO: set notification message when default license gets set
+//TODO: enable CC license by content type, like CC lite
 //TODO: implement mandatory license option (like cc lite)
 //TODO: make site license another block so it's more flexible?
 //TODO: validate selected licenses against available licenses (done for default licenses, but both a form_set_error and drupal_set_message get displayed on failed POST)
 //  license validation doesn't handle blanks well yet...
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
-//TODO: make CC question chooser an option
 //TODO: rename available_licenses to available_license_types
 //TODO: move cc_settingS_validate warning to somewhere else... needed for license selection form as well
 
@@ -129,7 +129,6 @@ function creativecommons_settings() {
     '#title' => t('License selection'),
   );
 
-  //TODO: use API /support/jurisdiction?
   $q = creativecommons_get_questions_array('standard');
   $form['creativecommons_license']['creativecommons_jurisdiction'] = array(
     '#type' => 'select',
@@ -199,9 +198,9 @@ function creativecommons_settings() {
 /**
  * Validate general creative commons settings.
  */
-function creativecommons_settings_validate(&$form, $form_state) {
-//TODO: should this be here? (no errors displays when settings page first loaded)  should it set_message or set_error? (is it permissible to select no licenses?)
-  if (empty($form_state['values']['creativecommons_available_licenses']))
+function creativecommons_settings_validate($node, &$form) {
+//TODO: should this be here? (no errors displays when settings page first loaded)  should it set message or error?
+  if (empty($form['values']['creativecommons_available_licenses']))
     //form_set_error('creativecommons_avaiable_licenses', 'You must enable at least one license for this module to work properly.');
     drupal_set_message('No licenses are enabled.', 'warning');
 }
@@ -213,19 +212,41 @@ function creativecommons_default_license() {
   global $base_url;
   $prefix = 'creativecommons_default';
 
-  if ($_POST) {
-    // save license data
-    $license_uri = $_POST[$prefix .'_license'];
-    unset($_POST[$prefix .'_license']);
-    
-    $cc = new creativecommons_license($license_uri);
-    
-    $cc_data = serialize($cc);
-    // save serialized data
-    variable_set($prefix .'_license', $cc_data);
+  $form = creativecommons_select_license_form($node, $prefix);
+  $form['#submit'][] = 'creativecommons_default_license_submit';
 
-    // TODO: is this overkill?
-    unset($_POST); //since we handled this ourselves
+  // append metadata fields and defaults site values
+  global $base_url;
+  $defaults = array('format' => 'interactive', 'source' => $base_url);
+  foreach (array('description' => 'site_slogan', 'description' => 'site_mission',
+    'title' => 'site_name') as $mn => $vv) {
+    $gv = variable_get($vv, NULL);
+    if (!is_null($gv) && drupal_strlen($gv) > 0)
+      $defaults[$mn] = $gv;
+  }
+
+  if (!is_null($node->cc->license_type) && $node->cc->license_type != 'none') {
+    $display2 = creativecommons_build_metadata_fields($node, $prefix, $defaults);
+    $form['select_license_form']['creativecommons_site']['metadata'] = $display2['creativecommons_site']['metadata'];
+  }
+
+  return system_settings_form($form);
+}
+
+/**
+ * Save Creative Commons default license. Implementation of hook_submit().
+ */
+function creativecommons_default_license_submit($node, &$form) {exit('here?');
+  $cc = new creativecommons_license($form['values']['creativecommons_default_license']);
+  $form['values']['creativecommons_default_license'] = serialize($cc);
+
+/*TODO: delete    if ($cc){
+      // save serialized data
+      $cc_data = serialize($cc);
+      variable_set($prefix .'_license', $cc_data);
+    }*/
+
+    // TODO: does something need to be unset?
 
     // TODO: Optional -- questions
     /* make it work
@@ -250,28 +271,8 @@ function creativecommons_default_license() {
 
     // save serialized data
     variable_set('creativecommons_default_license', serialize($cc));*/
-  } // end posted
 
-  $display = creativecommons_select_license_form($node, $prefix);
-
-  // append metadata fields and defaults site values
-  global $base_url;
-  $defaults = array('format' => 'interactive', 'source' => $base_url);
-  foreach (array('description' => 'site_slogan', 'description' => 'site_mission',
-    'title' => 'site_name') as $mn => $vv) {
-    $gv = variable_get($vv, NULL);
-    if (!is_null($gv) && drupal_strlen($gv) > 0)
-      $defaults[$mn] = $gv;
-  }
-
-  if (!is_null($node->cc->license_type) && $node->cc->license_type != 'none') {
-    $display2 = creativecommons_build_metadata_fields($node, $prefix, $defaults);
-    $display['select_license_form']['creativecommons_site']['metadata'] = $display2['creativecommons_site']['metadata'];
-  }
-
-  return system_settings_form($display);
 }
-
 /**
  * Creative Commons site license display settings form
  */
@@ -326,10 +327,11 @@ function creativecommons_select_license_form($node, $prefix, $simple = TRUE) {
   $cc = $node->cc ? $node->cc : creativecommons_get_default_license();
   
   // Check to see if selected license is available
-  if ($cc && !creativecommons_is_available_license($cc->license_uri, $types))
+  if ($cc && !creativecommons_is_available_license($cc))
     drupal_set_message('The "'. $cc->get_full_license_name() .'" license is no longer available. Please select another license.', 'warning');
 
   if ($simple) {
+    //TODO: change license to 'license_uri' for clarity
     $form['select_license_form'][$prefix .'_license'] = array(
       '#type' => 'select',
       '#title' => t('Select a license'),
@@ -604,7 +606,16 @@ function creativecommons_remove_unavailable_licenses($list, $available_licenses)
 /**
  * Return true if license is available, false otherwise.
  */
-function creativecommons_is_available_license($license_uri) {
+function creativecommons_is_available_license($cc) {
+  if ($cc)
+    return creativecommons_is_available_license_uri($cc->license_uri);
+  else
+    return false;
+}
+/**
+ * Return true if license uri is of available type, false otherwise.
+ */
+function creativecommons_is_available_license_uri($license_uri) {
   $available_licenses = variable_get('creativecommons_available_licenses', array());
   $license_type = creativecommons_get_license_type_from_uri($license_uri);
 
