@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.8 2009/07/01 09:19:41 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.9 2009/07/04 10:49:44 balleyne Exp $
 
 /**
  * @file
@@ -59,7 +59,8 @@ class creativecommons_license {
     }
     else {
       $this->license_type = 'standard'; // TODO: this is assumed...
-      $xml = $this->license_details($license);
+      $license_uri = $license;
+      $xml = $this->license_details($license_uri);
     }
 
 
@@ -156,7 +157,7 @@ class creativecommons_license {
   /**
    * Return full license name.
    */
-  function get_full_license_name(){
+  function get_full_license_name() {
     $type = $this->license_type == 'standard' ? 'Creative Commons ' : '';
     return $type . $this->license_name;
   }
@@ -252,6 +253,13 @@ class creativecommons_license {
    */
   function has_license() {
     return !is_null($this->license_uri);
+  }
+
+  /**
+   * Returns true if license is available, false otherwise.
+   */
+  function is_available() {
+    return creativecommons_is_available_license_uri($this->license_uri);
   }
 
   /**
@@ -401,12 +409,9 @@ class creativecommons_license {
    * Serialize object and save to the database
    */
   function save() {
-    if ($this->nid && $this->license_uri) {
-      $data = serialize($this);
-      $data = str_replace("'", "\'", $data);
-      $result = db_query("INSERT INTO {creativecommons} (nid, data) VALUES (%d, '%s')",  $this->nid, $data);
+    if ($this->nid && $this->is_available()) {
+      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $this->nid, $this->license_uri);
       return $result;
     }
-    return;
   }
 }

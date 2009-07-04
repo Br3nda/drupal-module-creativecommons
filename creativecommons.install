@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.2 2009/06/30 21:31:18 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.3 2009/07/04 10:49:44 balleyne Exp $
 
 /**
  * @file
@@ -19,9 +19,10 @@ function creativecommons_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE
       ),
-      'data' => array(
-        'description' => t('Creative Commons node license.'),
-        'type' => 'text',
+      'license_uri' => array(
+        'description' => t('Creative Commons license uri.'),
+        'type' => 'varchar',
+        'length' => 255,
         'not null' => TRUE,
       ),
     ),
@@ -35,14 +36,7 @@ function creativecommons_schema() {
  * Implementation of hook_install().
  */
 function creativecommons_install() {
-  $result = drupal_install_schema('creativecommons');
-
-  if (count($result) > 0) {
-    drupal_set_message(t('Creative Commons module installed.'));
-  }
-  else {
-    drupal_set_message(t('Creative Commons table creation failed. Please "uninstall" the module and retry.'));
-  }
+  drupal_install_schema('creativecommons');
 }
 
 /**
@@ -50,5 +44,6 @@ function creativecommons_install() {
  */
 function creativecommons_uninstall() {
   drupal_uninstall_schema('creativecommons');
+  //TODO: unset variables?
 }
 
