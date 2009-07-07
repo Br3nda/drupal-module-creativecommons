@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.14 2009/07/07 00:05:50 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.15 2009/07/07 00:29:56 balleyne Exp $
 
 /**
  * @file
@@ -23,13 +23,13 @@
 //TODO: review empty string uris, 'empty' vs null license objects
 //TODO: installation guidance
 //TODO: enable CC license by content type, like CC lite
-//TODO: implement mandatory license option (like cc lite)
 //TODO: make site license another block so it's more flexible?
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
 
 //TODO: license select should only default to site default for *new* content, not for existing unlicensed content
 //TODO: unset licenses when made unavailable
+//TODO: hook_perm for setting licenses, not just admin
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
@@ -156,6 +156,7 @@ function creativecommons_settings() {
     '#default_value' => variable_get('creativecommons_mandatory', 0),
   );
 
+  //TODO: change to 'required_metadata' to be more clear
   $form['creativecommons_license']['creativecommons_required'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Required metadata fields'),
@@ -314,15 +315,17 @@ function creativecommons_select_license_form($node, $prefix, $form_state_segment
       $selected_license_uri = creativecommons_get_default_license_uri();
     }
 
-    //TODO: check to see if selected license is available?
+    //TODO: check to see if selected license is available? or can this just fail silently (which is actually the drupal default)
 
     $form['select_license_form'][$prefix .'_license_uri'] = array(
       '#type' => 'select',
-      '#title' => t('Select a license'),
+      '#title' => t('Creative Commons License'),
       '#default_value' => $selected_license_uri,
       '#options' => $available_licenses,
       '#attributes' => $extra,
       '#description' => NULL,
+      // special case: mandatory flag doesn't apply to site default license form
+      '#required' => ($prefix != 'creativecommons_default' ? variable_get('creativecommons_mandatory', 0) : 0),
     );
   }
   else{
@@ -587,7 +590,7 @@ function creativecommons_get_available_licenses($options = NULL, $first_entry_bl
   $licenses = creativecommons_get_licenses($options);
 
   if ($first_entry_blank)
-    $licenses = array_merge(array(''), $licenses);
+    $licenses = array_merge(array('' => ''), $licenses);
 
   return creativecommons_remove_unavailable_licenses($licenses);
 }
@@ -604,7 +607,7 @@ function creativecommons_remove_unavailable_licenses($list, $available_license_t
   foreach ($list as $key => $value) {
     if (is_array($value))
       $list[$key] = creativecommons_remove_unavailable_licenses(&$value, $available_license_types);
-    else if (!in_array($key, $available_license_types) && !in_array(creativecommons_get_license_type_from_uri($key), $available_license_types))
+    else if (!empty($key) && !in_array($key, $available_license_types) && !in_array(creativecommons_get_license_type_from_uri($key), $available_license_types))
       unset($list[$key]);
   }
 
