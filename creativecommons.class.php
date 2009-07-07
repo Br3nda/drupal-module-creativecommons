@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.9 2009/07/04 10:49:44 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.10 2009/07/07 00:05:50 balleyne Exp $
 
 /**
  * @file
@@ -23,10 +23,12 @@
 //TODO: PHP5
 //TODO: CC0 support
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
+//TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)
 class creativecommons_license {
   // license attributes
   var $license_uri;
   var $license_name;
+  var $license_class;
   var $license_type;
   var $permissions;
   var $metadata;
@@ -39,12 +41,9 @@ class creativecommons_license {
    * Initialize object
    */
   function __construct($license, $questions = NULL, $metadata = array()) {
-    // Destruct if no license value provided
-    if (!$license) {
-      unset($this);
+    // don't load a blank license
+    if (!$license)
       return;
-    }
-
 
     $this->permissions = array();
     $this->permissions['requires'] = array();
@@ -52,15 +51,17 @@ class creativecommons_license {
     $this->permissions['permits'] = array();
 
     if ($questions) {
+      //TODO: review
       $this->license_type = $license;
       $xml = $this->post_answers($questions);
       foreach ($questions as $q => $a)
         $this->$q = $a['selected'];
     }
     else {
-      $this->license_type = 'standard'; // TODO: this is assumed...
-      $license_uri = $license;
-      $xml = $this->license_details($license_uri);
+      $this->license_class = 'standard'; // TODO: this is assumed...
+      $this->license_uri = $license;
+      $this->license_type = creativecommons_get_license_type_from_uri($this->license_uri);
+      $xml = $this->get_license_xml();
     }
 
 
@@ -84,17 +85,15 @@ class creativecommons_license {
   /**
    * Get license details from API by uri
    */
-  function license_details($license_uri) {
-    $response = creativecommons_api_request('/details?license-uri='. urlencode($license_uri));
-    if ($response->code == 200)
-      return $response->data;
+  function get_license_xml() {
+    return creativecommons_return_xml($this->license_uri, '/details?license-uri='. urlencode($this->license_uri));
   }
 
   /**
    * Post answer data to creative commons web api, return xml response.
    */
   function post_answers($questions) {
-    $id = $this->license_type;
+    $id = $this->license_class;
     if (isset($id) && $id != 'none') {
 
       // required header
@@ -110,6 +109,8 @@ class creativecommons_license {
 
       // post to cc api
       $post_data = 'answers='. urlencode($answer_xml) ."\n";
+
+      //TODO: use return_xml here?
       $response = creativecommons_api_request($uri, $headers, 'POST', $post_data);
       if ($response->code == 200)
         return $response->data;
@@ -124,9 +125,17 @@ class creativecommons_license {
   function extract_values($values, $tags) {
     foreach ($values as $xn) {
       switch ($xn['tag']) {
-        //TODO: better error handling
         case 'error':
-          drupal_set_message('Error retrieving license information from CC API: '. $values[2]['value'], 'error');
+          if ($xn['type'] == 'open') {
+            $this->error = array();
+            $this->error['id'] = $values[1]['value'];
+            $this->error['message'] = $values[2]['value'];
+            //TODO: should this set the error here?
+            $message = 'CC API Error ('. $this->error['id'] .'): '. $this->error['message']
+              . ($this->error['id'] == 'invalid' ? ' '. $this->get_full_license_name() : '');
+            drupal_set_message($message, 'error');
+
+          }
         break;
 
         case 'license-uri':
@@ -158,8 +167,16 @@ class creativecommons_license {
    * Return full license name.
    */
   function get_full_license_name() {
-    $type = $this->license_type == 'standard' ? 'Creative Commons ' : '';
-    return $type . $this->license_name;
+    if (!$this->has_license()) {
+      return 'No License';
+    }
+    else if ($this->is_valid()) {
+      $class = $this->license_class == 'standard' ? 'Creative Commons ' : '';
+      return $class . $this->license_name;
+    }
+    else {
+      return '"'. $this->license_uri .'"';
+    }
   }
   /**
    * Set a value in the metadata array
@@ -191,13 +208,13 @@ class creativecommons_license {
       // icons
       case(2):
         // public domain license
-        if ($this->license_type == 'publicdomain') {
+        if ($this->license_class == 'publicdomain') {
           $images[] = CC_IMG_PATH .'/icon-publicdomain.png';
           break;
         }
 
         // sampling license
-        else if ($this->license_type == 'recombo') {
+        else if ($this->license_class == 'recombo') {
           if ($this->license_name == 'Sampling 1.0') {
             $images[] = CC_IMG_PATH .'/icon-sampling.png';
           }
@@ -227,7 +244,7 @@ class creativecommons_license {
       // single image
       case(1):
       default:
-        switch ($this->license_type) {
+        switch ($this->license_class) {
           case 'standard':
             $images[] = CC_IMG_PATH .'/img-somerights.gif';
             break;
@@ -252,14 +269,37 @@ class creativecommons_license {
    * Returns true if license set, false otherwise
    */
   function has_license() {
-    return !is_null($this->license_uri);
+    return !empty($this->license_uri);
+  }
+
+  /**
+   * Returns true if license uri is valid, false otherwise.
+   */
+  function is_valid() {
+    // note: license xml was already extracted in constructor
+    return !($this->error['id'] == 'invalid');
   }
 
   /**
    * Returns true if license is available, false otherwise.
+   * A license is available if it has a valid uri and if its license type is
+   * available. Blank licenses are 'available'.
    */
   function is_available() {
-    return creativecommons_is_available_license_uri($this->license_uri);
+    // A blank license is technically 'available'
+    if (!$this->has_license())
+      return TRUE;
+
+    // Check if license is valid
+    if (!$this->is_valid())
+      return FALSE;
+
+    // Check if license type is available
+    $available_license_types = creativecommons_get_available_license_types();
+    if (!in_array($this->license_type, $available_license_types))
+      return FALSE;
+
+    return TRUE;
   }
 
   /**
@@ -408,9 +448,14 @@ class creativecommons_license {
   /**
    * Serialize object and save to the database
    */
-  function save() {
-    if ($this->nid && $this->is_available()) {
-      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $this->nid, $this->license_uri);
+  function save($nid) {
+    //TODO: improve error handling
+    if (!$nid) {
+      drupal_set_message('A node must be specified to save a license', 'error');
+    }
+
+    if ($nid && $this->is_available()) {
+      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $nid, $this->license_uri);
       return $result;
     }
   }

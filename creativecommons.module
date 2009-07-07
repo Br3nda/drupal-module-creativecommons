@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.13 2009/07/04 10:49:44 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.14 2009/07/07 00:05:50 balleyne Exp $
 
 /**
  * @file
@@ -25,10 +25,11 @@
 //TODO: enable CC license by content type, like CC lite
 //TODO: implement mandatory license option (like cc lite)
 //TODO: make site license another block so it's more flexible?
-//TODO: validate selected licenses against available licenses (done for default licenses, but both a form_set_error and drupal_set_message get displayed on failed POST)
-//  license validation doesn't handle blanks well yet...
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
-//TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well
+//TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
+
+//TODO: license select should only default to site default for *new* content, not for existing unlicensed content
+//TODO: unset licenses when made unavailable
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
@@ -41,6 +42,7 @@ require_once('creativecommons.class.php');
 /**
  * Enclose each arg in paragraph tags.
  */
+//TODO: is there a drupal function that can replace this?
 function cc_para() {
   $args = func_get_args();
   $p = '';
@@ -120,7 +122,7 @@ function creativecommons_help($path, $arg) {
  * General Creative Commons settings page.
  */
 function creativecommons_settings() {
-  $available_license_types = variable_get('creativecommons_available_license_types', array());
+  $available_license_types = creativecommons_get_available_license_types();
   $license_array_keys = creativecommons_get_licenses(array('jurisdiction' => variable_get('creativecommons_jurisdiction', '')), TRUE);
   $metadata_types_keys = creativecommons_get_metadata_types();
 
@@ -212,6 +214,17 @@ function creativecommons_default_license() {
   global $base_url;
   $prefix = 'creativecommons_default';
 
+  // Load default license
+  $cc = creativecommons_get_default_license();
+
+  // Check to see if default license is still available (TODO: or should it be unset when made unavailable?)
+  if (!$cc->is_available()) {
+    $message = $cc->get_full_license_name();
+    $message .= $cc->is_valid() ? ' is no longer available' : ' is not valid';
+    drupal_set_message($message, 'warning');
+  }
+
+  $node->cc = $cc;
   $form = creativecommons_select_license_form($node, $prefix);
   $form['#submit'][] = 'creativecommons_default_license_submit';
 
@@ -231,6 +244,10 @@ function creativecommons_default_license() {
   }
 
   return system_settings_form($form);
+}
+
+function creativecommons_default_license_validate($form, &$form_state) {
+  creativecommons_validate_license_uri('creativecommons_default_license_uri', $form_state['values']['creativecommons_default_license_uri']);
 }
 
 
@@ -281,22 +298,28 @@ function creativecommons_site_license() {
  *
  * @param $simple - use simple chooser if true
  */
-function creativecommons_select_license_form($node, $prefix, $simple = TRUE) {
+//TODO: what happens when selected_license_uri is not in the list? display warning?
+function creativecommons_select_license_form($node, $prefix, $form_state_segment = NULL, $simple = TRUE) {
   // load available licenses
   $available_licenses = creativecommons_get_available_licenses(array('jurisdiction' => variable_get('creativecommons_jurisdiction', '')), TRUE);
 
-  $cc = $node->cc ? $node->cc : creativecommons_get_default_license();
-
-  // Check to see if selected license is available
-  if ($cc && !$cc->is_available())
-    drupal_set_message('The "'. $cc->get_full_license_name() .'" license is no longer available. Please select another license.', 'warning');
-
   if ($simple) {
-    //TODO: change license to 'license_uri' for clarity
+    if ($form_state_segment && isset($form_state_segment[$prefix .'_license_uri'])) {
+      $selected_license_uri = $form_state_segment[$prefix .'_license_uri'];
+    }
+    else if ($node->cc) {
+      $selected_license_uri = $node->cc->license_uri;
+    }
+    else {
+      $selected_license_uri = creativecommons_get_default_license_uri();
+    }
+
+    //TODO: check to see if selected license is available?
+
     $form['select_license_form'][$prefix .'_license_uri'] = array(
       '#type' => 'select',
       '#title' => t('Select a license'),
-      '#default_value' => $cc->license_uri,
+      '#default_value' => $selected_license_uri,
       '#options' => $available_licenses,
       '#attributes' => $extra,
       '#description' => NULL,
@@ -348,6 +371,21 @@ function creativecommons_select_license_form($node, $prefix, $simple = TRUE) {
   }
 return $form;
 }
+
+/**
+ * Provides license uri validation for form validate methods to use.
+ */
+function creativecommons_validate_license_uri($license_uri_key, $license_uri) {
+  // Check to see if selected license is available
+  $cc = new creativecommons_license($license_uri);
+  if (!$cc->is_available()) {
+    $message = $cc->get_full_license_name();
+    $message .= $cc->is_valid() ? ' is no longer available.' : ' is not a valid license.';
+
+    form_set_error($license_uri_key, $message);
+  }
+}
+
 
 
 /**
@@ -530,6 +568,14 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   return $types;
 }
 
+
+/**
+ * Return an array of available license types.
+ */
+function creativecommons_get_available_license_types() {
+  return variable_get('creativecommons_available_license_types', array());
+}
+
 /**
  * Return an array of available licenses.
  * @param $options -- options for querying the CC API for available licenses
@@ -543,16 +589,18 @@ function creativecommons_get_available_licenses($options = NULL, $first_entry_bl
   if ($first_entry_blank)
     $licenses = array_merge(array(''), $licenses);
 
-  $available_license_types = variable_get('creativecommons_available_license_types', array());
-
-  return creativecommons_remove_unavailable_licenses($licenses, $available_license_types);
+  return creativecommons_remove_unavailable_licenses($licenses);
 }
 
 /**
  * Takes a list of licenses and unsets any which are not available in the site settings.
  * @param $list  list of licenses to check
  */
-function creativecommons_remove_unavailable_licenses($list, $available_license_types) {
+function creativecommons_remove_unavailable_licenses($list, $available_license_types = NULL) {
+
+  if (!$available_license_types)
+    $available_license_types = creativecommons_get_available_license_types();
+
   foreach ($list as $key => $value) {
     if (is_array($value))
       $list[$key] = creativecommons_remove_unavailable_licenses(&$value, $available_license_types);
@@ -564,13 +612,12 @@ function creativecommons_remove_unavailable_licenses($list, $available_license_t
 }
 
 /**
- * Return true if license uri is of available type, false otherwise.
+ * Return true if license uri receives a valid response from CC API, false
+ * otherwise.
  */
 function creativecommons_is_available_license_uri($license_uri) {
-  $available_license_types = variable_get('creativecommons_available_license_types', array());
-  $license_type = creativecommons_get_license_type_from_uri($license_uri);
-
-  return in_array($license_type, $available_license_types);
+  $cc = new creativecommons_license($license_uri);
+  return $cc->is_available();
 }
 
 /**
@@ -806,12 +853,6 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
 
   switch ($op) {
     // settings   'form post replaced by form_api
-      case 'validate':
-      if (variable_get("creativecommons_$node->type", 1))
-        if ($_POST['edit'])
-          creativecommons_validate($node);
-      break;
-
     case 'load':
       if (variable_get("creativecommons_$node->type", 1))
         $node->cc = creativecommons_load($node);
@@ -823,6 +864,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
 
     case 'insert':
     case 'update':
+          //TODO: create update query somewhere instead of always deleting
           creativecommons_delete($node);
           creativecommons_save($node);
       break;
@@ -831,7 +873,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
       creativecommons_delete($node);
       break;
 
-
+    //TODO: review
     case 'rss item':
       if ($item_license = creativecommons_xml($node))
         return $item_license;
@@ -857,11 +899,10 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
     );
   }
 
+  // Add CC license selection to node form
   if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
-    $node = $form['#node'];    // got form
-
     if (variable_get("creativecommons_$node->type", 1)) {
-        $form = array_merge($form, creativecommons_form($node));
+        $form = array_merge($form, creativecommons_node_form($form['#node'], $form_state));
     }
   }
 
@@ -954,58 +995,20 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
   }
 }
 
-//TODO: function creativecommons_submit($node, &$form){}
 /**
- * Form for attaching Creative Commons license to a node
+ * Form for attaching Creative Commons license to a node (not a hook)
  */
-function creativecommons_form($node) {
-
-  //TODO: this should be in hook_submit()? (is this even being called?)
-  if ($_POST) {
-    if (is_array($_POST['creativecommons']['select_license_form']) ) {
-      foreach ($_POST['creativecommons']['select_license_form'] as $key => $val ) {
-        $_POST[$key] = $val;
-      }
-    }
-
-    if (is_array($_POST['creativecommons']['cc']) ) {
-      foreach ($_POST['creativecommons']['cc'] as $key => $val ) {
-        $_POST['cc'][$key] = $val;
-      }
-    }
-
-    $cc = new creativecommons_license($_POST['cc_license_uri']);
-
-    //TODO: hook_validate() for this check
-    if ($cc && $cc->is_available())
-      $node->cc = $cc;
-
-
-
-    //TODO: make questions optional
-    /* $p = $_POST['cc_license'];
-    $questions = creativecommons_get_questions_array($p);
-    foreach ($questions as $k => $v) {
-      $post_val = $_POST['edit']['cc'][$k];
-      if (in_array($post_val, $v['answers'])) {
-        $questions[$k]['selected'] = $post_val;
-      }
-      else {
-        // default to first answer in array
-        $questions[$k]['selected'] = current($v['answers']);
-      }
-    }
-
-    if (!$_POST['edit']['cc']['metadata']['source'])
-      $_POST['edit']['cc']['metadata']['source'] = $base_url;
-    $cc = new creativecommons_license($p, $questions, $_POST['edit']['cc']['metadata']);
-    $node->cc = $cc;
-    */
-  }
+function creativecommons_node_form($node, $form_state) {
+  //TODO: review metadata
 
   // if no licenses available (in admin > settings > creative commons) then no form displayed
-  if (!$selected_licenses = variable_get('creativecommons_available_license_types', NULL))
+  if (!$selected_licenses = creativecommons_get_available_license_types())
     return;
+
+  // Add validate and submit functions
+  $form['#validate'][] = 'creativecommons_node_form_validate';
+  $form['#submit'][] = 'creativecommons_node_form_submit';
+
 
   $cc_img = '<img src="'. CC_IMG_PATH .'/cc-choose-license.gif" alt="Creative Commons license" />';
   $cc_txt = '<p><a href="http://creativecommons.org/learn/licenses/" target="_blank">Creative Commons licenses</a> help you share your work while keeping your copyright. Other people can copy and distribute your work provided they give you credit -- and only on the conditions you specify here. This form helps you choose those conditions. Visit the Creative Commons website for an <a href="http://creativecommons.org/about/licenses/meet-the-licenses">explanation of the different licenses</a>.
@@ -1022,7 +1025,8 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
   //$selected = $node->cc_license;
   $selected = (is_null($node->cc_license)) ? $node->cc->license_type  : $node->cc_license;
   $prefix = 'cc';
-  $output1 = creativecommons_select_license_form($node, $prefix);
+  $output1 = creativecommons_select_license_form($node, $prefix, $form_state['values']['creativecommons']['select_license_form']);
+
 
   // if no license, then don't process the metadata
   //  note: this loses the metadata, need to preserve it somehow... maybe load the hidden layer,
@@ -1037,14 +1041,12 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
       '#tree' => TRUE,
-  );
-  $form['creativecommons'][] = array('#value' => $output);
-  $form['creativecommons']['select_license_form'] = $output1['select_license_form'];
-//  $form['#submit'][] = 'creativecommons_submit';
+    );
+    $form['creativecommons'][] = array('#value' => $output);
+    $form['creativecommons']['select_license_form'] = $output1['select_license_form'];
 
-//TODO: cutting off metadata...
-  return $form;
-}
+    return $form;
+  }
 
 
 /// ///////////////////////////////////
@@ -1149,52 +1151,103 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
   return $form;
 }
 
+
+
+/**
+  * Validate the Creative Commons node form.
+  */
+function creativecommons_node_form_validate($form, &$form_state) {
+  /**
+   * The case of a non-available license is actually handled well by Drupal already.
+   * Drupal says, "an illegal choice has been detected," because only available
+   * licenses appear in the form.
+   *
+   * However, it seems that if a license becomes unavailable after a form is
+   * already in edit, or at least the preview stage, then the following check is
+   * needed.
+   */
+  creativecommons_validate_license_uri('cc_license_uri', $form_state['values']['creativecommons']['select_license_form']['cc_license_uri']);
+
+/*  $license_uri = $form_state['values']['creativecommons']['select_license_form']['cc_license_uri'];
+  $cc = new creativecommons_license($license_uri);
+  if (!$cc->is_available()) {
+    form_set_error('creativecommons', $cc->get_full_license_name() .' is no longer available');
+  }*/
+
+  // This would be require to check license using questions
+  /* $questions = creativecommons_get_questions_array($node->cc_license);
+  // loop thru ?s, set to current val, else default to first answer in array
+  foreach ($questions as $k => $v) {
+    if (in_array($node->cc[$k], $v['answers']))
+      $questions[$k]['selected'] = $node->cc[$k];
+    else
+      $questions[$k]['selected'] = current($v['answers']);
+  }*/
+}
+
+/**
+ * Submit the Creative Commons node form.
+ */
+function creativecommons_node_form_submit($form, &$form_state) {
+//TODO: what is this needed for?
+return;
+
+  //Same as creativecommons_save
+    if (is_array($_POST['creativecommons']['select_license_form']) ) {
+      foreach ($_POST['creativecommons']['select_license_form'] as $key => $val ) {
+        $_POST[$key] = $val;
+      }
+    }
+
+    if (is_array($_POST['creativecommons']['cc']) ) {
+      foreach ($_POST['creativecommons']['cc'] as $key => $val ) {
+        $_POST['cc'][$key] = $val;
+      }
+    }
+
+    $cc = new creativecommons_license($_POST['cc_license_uri']);
+
+    //TODO: hook_validate() for this check
+    if ($cc && $cc->is_available())
+      $node->cc = $cc;
+
+
+
+    //TODO: make questions optional
+    /* $p = $_POST['cc_license'];
+    $questions = creativecommons_get_questions_array($p);
+    foreach ($questions as $k => $v) {
+      $post_val = $_POST['edit']['cc'][$k];
+      if (in_array($post_val, $v['answers'])) {
+        $questions[$k]['selected'] = $post_val;
+      }
+      else {
+        // default to first answer in array
+        $questions[$k]['selected'] = current($v['answers']);
+      }
+    }
+
+    if (!$_POST['edit']['cc']['metadata']['source'])
+      $_POST['edit']['cc']['metadata']['source'] = $base_url;
+    $cc = new creativecommons_license($p, $questions, $_POST['edit']['cc']['metadata']);
+    $node->cc = $cc;
+    */
+
+}
+
 /**
  * Save license/node relationship in database
  */
 function creativecommons_save($node) {
-  // TODO: duplicate code -- copied from _form()
-  if (is_array($_POST['creativecommons']['select_license_form']) ) {
-    foreach ($_POST['creativecommons']['select_license_form'] as $key => $val ) {
-      $_POST[$key] = $val;
-    }
-  }
-  if (is_array($_POST['creativecommons']['cc']) ) {
-    foreach ($_POST['creativecommons']['cc'] as $key => $val ) {
-      $_POST['cc'][$key] = $val;
-    }
-  }
-  $cc = new creativecommons_license($_POST['cc_license_uri']);
+
+  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri']);
+  $cc->save($node->nid);
+
+  //TODO: is this line necessary?
   $node->cc = $cc;
-  //end duplicate code
-
-
-  if ($node->cc && !method_exists($node->cc, 'save') ) {
-    echo 'bad behaviour';
-  }
-
-  if ($node->cc) {
-    $node->cc->nid = $node->nid;
-    $node->cc->save();
-  }
 
   return;
 }
-
-
-// hook insert
-/* function creativecommons_insert($node) {
-  creativecommons_save($node);
-} */
-
-/**
-  * hook update
-
-function creativecommons_update($node) {
-    creativecommons_delete($node);
-    creativecommons_save($node);
-}
-  */
 
 /**
   * Delete node/license relationship from database
@@ -1221,39 +1274,6 @@ function creativecommons_load($node) {
     }
   }
   return;
-}
-
-
-/**
-  * validate hook
-  */
-function creativecommons_validate(&$node) {
-  // check for warning is array first arg
-  foreach ($node->creativecommons['select_license_form'] as $key => $val ) {
-      $node->$key = $val;
-  }
-  foreach ($node->creativecommons['cc'] as $key => $val ) {
-      $node->cc[$key] = $val;
-  }
-  // echo_pre($node);
-  if (is_null($node->cc_license))
-    $node->cc_license = (is_null($node->cc->license_type)) ? 'none' : $node->cc->license_type;
-
-  $questions = creativecommons_get_questions_array($node->cc_license);
-  // loop thru ?s, set to current val, else default to first answer in array
-  foreach ($questions as $k => $v) {
-    if (in_array($node->cc[$k], $v['answers']))
-      $questions[$k]['selected'] = $node->cc[$k];
-    else
-      $questions[$k]['selected'] = current($v['answers']);
-  }
-
-  $cc = new creativecommons_license($node->cc_license, $questions, $node->cc['metadata']);
-
-  if (!$node->cc)
-    $cc->new = TRUE;
-  $node->cc = $cc;
-
 }
 
 
