@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.15 2009/07/07 00:29:56 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.16 2009/07/07 01:04:43 balleyne Exp $
 
 /**
  * @file
@@ -202,9 +202,8 @@ function creativecommons_settings() {
  * Validate general creative commons settings.
  */
 function creativecommons_settings_validate($form, &$form_state) {
-//TODO: should this be here? (no errors displays when settings page first loaded)  should it set message or error?
+//TODO: should this be here? (no errors displays when settings page first loaded, and it sets message, not error)
   if (empty($form_state['values']['creativecommons_available_license_types']))
-    //form_set_error('creativecommons_avaiable_licenses', 'You must enable at least one license for this module to work properly.');
     drupal_set_message('No licenses are enabled.', 'warning');
 }
 
@@ -299,7 +298,6 @@ function creativecommons_site_license() {
  *
  * @param $simple - use simple chooser if true
  */
-//TODO: what happens when selected_license_uri is not in the list? display warning?
 function creativecommons_select_license_form($node, $prefix, $form_state_segment = NULL, $simple = TRUE) {
   // load available licenses
   $available_licenses = creativecommons_get_available_licenses(array('jurisdiction' => variable_get('creativecommons_jurisdiction', '')), TRUE);
@@ -314,8 +312,6 @@ function creativecommons_select_license_form($node, $prefix, $form_state_segment
     else {
       $selected_license_uri = creativecommons_get_default_license_uri();
     }
-
-    //TODO: check to see if selected license is available? or can this just fail silently (which is actually the drupal default)
 
     $form['select_license_form'][$prefix .'_license_uri'] = array(
       '#type' => 'select',
@@ -1005,8 +1001,9 @@ function creativecommons_node_form($node, $form_state) {
   //TODO: review metadata
 
   // if no licenses available (in admin > settings > creative commons) then no form displayed
-  if (!$selected_licenses = creativecommons_get_available_license_types())
-    return;
+  if (!$selected_licenses = creativecommons_get_available_license_types()) {
+    return array();
+  }
 
   // Add validate and submit functions
   $form['#validate'][] = 'creativecommons_node_form_validate';
