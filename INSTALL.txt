@@ -2,35 +2,33 @@ This module allows users to assign a Creative Commons license to the content
 of a node.  It uses to Creatve Commons API to update when new licenses are 
 made available.
 
+Licenses are diplayed using a Creative Commons license block.
+
 Administators can also select a site license, which can be displayed in the 
 footer of each page.
 
 
-QUESTIONS, COMMENTS, ANGRY OUTBURSTS?
-////////////////////
+== Questions/Comments? ==
 
-Please direct them to Peter Bull <pbull@ltc.org>
+Blaise Alleyne <blaise@alleyneinc.net>
+(updated module for Drupal 6.x as part of Google Summer of Code 2009)
 
 
-INSTALLATION
-////////////////////
+== Installation ==
+1.  Uncompress the creativecommons.tar.gz file to your modules directory.
 
-1.  Uncompress the creativecommons.tar file to your modules directory.
+2.  Turn on the module under admin > modules.
 
-2.  Create the database table using the file creativecommons.mysql
-
-3.  Turn on the module under admin > modules.
-
-4.  Under admin > settings > Creative Commons, set up the module.  Note that 
+3.  Under admin > settings > Creative Commons, set up the module.  Note that 
 you must have at least one license selected (under "License Selection") for 
 the module to work.  You can also, optionally, select required metadata 
 fields, and the manner in which the license will be displayed.
 
-5.  If you would like to select a license that encompasses the entire site,
-do so under admin > settings > Creative Commons > site license.  You can 
-customize the display of the site license and accompanying text.
+4. Under admin > settings > Creative Commons > default you can set a default license for the entire site.
 
-6.  Under admin > content > configure > default workflow, you can select
+5.  Under admin > settings > Creative Commons > site license, you can choose to use the default license as a site-wide license to be displayed on every page.
+
+6.  [not yet implemented] Under admin > content > configure > default workflow, you can select
 which node types can have a license appended to them.  For example, you
 might wish to allow Creative Commons licenses to be atttached to blog
 posts, but not to forum posts.
