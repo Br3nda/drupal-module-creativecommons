@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.17 2009/07/12 03:06:45 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.18 2009/07/12 03:46:18 balleyne Exp $
 
 /**
  * @file
@@ -20,7 +20,6 @@
  *
  */
 
-//TODO: review empty string uris, 'empty' vs null license objects
 //TODO: installation guidance
 //TODO: enable CC license by content type, like CC lite
 //TODO: make site license another block so it's more flexible?
@@ -28,7 +27,6 @@
 //TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
 
 //TODO: license select should only default to site default for *new* content, not for existing unlicensed content
-//TODO: unset licenses when made unavailable
 //TODO: hook_perm for setting licenses, not just admin
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
@@ -817,12 +815,9 @@ return system_settings_form($form);
  * Implementation of hook_footer() -- display site license on footer of each page
  */
 function creativecommons_footer() {
-  if ($cc = creativecommons_get_default_license()) {
-    if (is_object($cc) && variable_get('creativecommons_site_license_display', FALSE)) {
-      $output .= $cc->get_html(TRUE);
-      if (variable_get('creativecommons_site_license_embed', FALSE))
-        $output .= '<!-- '. $cc->get_rdf() .' -->';
-    }
+  if (variable_get('creativecommons_site_license_display', FALSE)) {
+    $cc = creativecommons_get_default_license();
+    $output =  $cc->output(variable_get('creativecommons_site_license_additional_text', ''));
     return $output;
   }
 }
@@ -976,12 +971,8 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
         $node = node_load(array('nid' => $nid));
 
         if ( $node && arg(0) == 'node' && ( $node->cc ) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
-          // append html
-          $output = $node->cc->get_html();
-
-          // append rdf
-          if (variable_get('creativecommons_rdf', TRUE))
-            $output .= "<!-- ". $node->cc->get_rdf() ." -->";
+          // get license information
+          $output = $node->cc->output();
 
           if ($output) {
             $block['content'] =  '<p class="creativecommons">'. $output .'</p>';

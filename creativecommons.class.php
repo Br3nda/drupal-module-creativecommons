@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.10 2009/07/07 00:05:50 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.11 2009/07/12 03:46:18 balleyne Exp $
 
 /**
  * @file
@@ -77,7 +77,7 @@ class creativecommons_license {
     $this->metadata = $metadata;
 
     // TODO: is there a better way to do this? will this work with questions too?
-    preg_match('/<html>(.*)<\/html>/', $xml, $matches) ? 'yes' : 'no';
+    preg_match('/<html>(.*)<\/html>/', $xml, $matches);
     $this->html = $matches[1];
   }
 
@@ -305,21 +305,11 @@ class creativecommons_license {
   /**
    * Return html containing license link (+ images)
    */
-  function get_html($site_license = FALSE) {
+  function get_html() {
 
     // must have a license to display html
-    if (!$this->has_license())
-      return;
-
-    $html = "\n<!--Creative Commons License-->\n". $this->html;
-
-    if ($site_license) {
-      if ($footer_text = variable_get('creativecommons_site_license_additional_text', NULL))
-        $html .= '<br />'. $footer_text;
-    }
-    $html .= "<!--/Creative Commons License-->\n";
-
-    return $html;
+    if ($this->has_license())
+      return $this->html;
 
 
     /* $txt = 'This work is licensed under a '.
@@ -457,6 +447,32 @@ class creativecommons_license {
     if ($nid && $this->is_available()) {
       $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $nid, $this->license_uri);
       return $result;
+    }
+  }
+  
+  /**
+   * Output license information for web.
+   */
+  function output($additional_text = '') {
+    // Check for empty license
+    if ($this->has_license()) {
+      $output = "\n<!--Creative Commons License-->\n".
+
+      // HTML output
+      $output .= $this->get_html();
+      
+      // Additional text
+      if ($additional_text) {
+        $ouput .= '<br/>'. $additional_text;
+      }
+        
+      // RDF output
+      if (variable_get('creativecommons_rdf', FALSE)) {
+        $output .= "\n<!-- ". $this->get_rdf() ." -->\n";
+      }
+
+      $output .= "<!--/Creative Commons License-->\n";
+      return $output;
     }
   }
 }
