@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.12 2009/07/12 04:19:56 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.13 2009/07/12 09:31:07 balleyne Exp $
 
 /**
  * @file
@@ -22,6 +22,7 @@
 
 //TODO: PHP5
 //TODO: CC0 support
+//TODO: all rights reserved
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
 //TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)
 class creativecommons_license {
@@ -444,7 +445,7 @@ class creativecommons_license {
       drupal_set_message('A node must be specified to save a license', 'error');
     }
 
-    if ($nid && $this->is_available()) {
+    if ($nid && $this->has_license() && $this->is_available()) {
       $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $nid, $this->license_uri);
       return $result;
     }
