@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.11 2009/07/12 03:46:18 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.12 2009/07/12 04:19:56 balleyne Exp $
 
 /**
  * @file
@@ -449,7 +449,7 @@ class creativecommons_license {
       return $result;
     }
   }
-  
+
   /**
    * Output license information for web.
    */
@@ -460,12 +460,12 @@ class creativecommons_license {
 
       // HTML output
       $output .= $this->get_html();
-      
+
       // Additional text
       if ($additional_text) {
-        $ouput .= '<br/>'. $additional_text;
+        $output .= '<br/>'. $additional_text;
       }
-        
+
       // RDF output
       if (variable_get('creativecommons_rdf', FALSE)) {
         $output .= "\n<!-- ". $this->get_rdf() ." -->\n";
