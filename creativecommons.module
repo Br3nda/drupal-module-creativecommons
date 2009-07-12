@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.22 2009/07/12 10:19:37 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.23 2009/07/12 10:48:31 balleyne Exp $
 
 /**
  * @file
@@ -20,8 +20,6 @@
  *
  */
 
-//TODO: installation guidance
-//TODO: enable CC license by content type, like CC lite
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
 //TODO: hook_perm for setting licenses, not just admin
@@ -80,7 +78,7 @@ function creativecommons_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_site_defaults'),
     'access arguments' => array('administer creative commons'),
-    'type' => MENU_LOCAL_TASK
+    'type' => MENU_LOCAL_TASK,
   );
 
   $items['admin/settings/creativecommons/types'] = array(
@@ -88,7 +86,8 @@ function creativecommons_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_types_form'),
     'access arguments' => array('administer creative commons'),
-    'type' => MENU_LOCAL_TASK
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10
   );
 
   return $items;
@@ -357,7 +356,13 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
     // Warn user if changed
     if ($selected_license_uri != $old_selected_license_uri) {
       //TODO: improve message
-      drupal_set_message('The jurisdiction differs from what was stored, so a license of the same type from this jurisdiction has been selected', 'warning');
+      drupal_set_message('Your license selection has been automatically altered. Please review.', 'warning');
+      /**
+       * Cases...
+       * 1) jurisdiction changed
+       * 2) version changed
+       * 3) license was made unavailable
+       */ 
     }
 
     $form['select_license_form'][$key] = array(
@@ -566,9 +571,6 @@ function creativecommons_format_jurisdiction_array($raw_array) {
 function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   $types = array();
 
-  //Add All Rights Reserved
-  $types['all'] = 'All Rights Reserved';
-
   // License classes
   $types['Creative Commons'] = array();
   $types['Public Domain'] = array();
@@ -628,13 +630,21 @@ function creativecommons_get_available_license_types() {
  *
  * @return array of available licenses
  */
-function creativecommons_get_available_licenses($options = NULL, $first_entry_blank = FALSE, $value_as_type = FALSE) {
+function creativecommons_get_available_licenses($options = NULL, $allow_none = FALSE, $value_as_type = FALSE) {
   $licenses = creativecommons_get_licenses($options, $value_as_type);
 
-  if ($first_entry_blank)
-    $licenses = array_merge(array('' => ''), $licenses);
+  if ($allow_none)
+    $licenses = array_merge(array('' => 'None (All Rights Reserved)'), $licenses);
 
-  return creativecommons_remove_unavailable_licenses($licenses);
+  $available_licenses = creativecommons_remove_unavailable_licenses($licenses);
+  
+  foreach ($available_licenses as $class => $value) {
+    if (empty($value)) {
+      unset($available_licenses[$class]);
+    }
+  }
+  
+  return $available_licenses;
 }
 
 /**
@@ -676,9 +686,11 @@ function creativecommons_get_license_uri($license_type, $jurisdiction) {
   $available_licenses = creativecommons_get_available_licenses( array('jurisdiction' => $jurisdiction) );
 
   foreach ($available_licenses as $class => $licenses) {
-    foreach ($licenses as $uri => $title) {
-      if ($license_type == creativecommons_get_license_type_from_uri($uri)) {
-        $license_uri = $uri;
+    if (is_array($licenses)) {
+      foreach ($licenses as $uri => $title) {
+        if ($license_type == creativecommons_get_license_type_from_uri($uri)) {
+          $license_uri = $uri;
+        }
       }
     }
   }
@@ -1038,7 +1050,7 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
           $nid = (int)arg(1);
           $node = node_load(array('nid' => $nid));
 
-          if ( $node && arg(0) == 'node' && ( $node->cc ) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
+          if ( $node && arg(0) == 'node' && ( $node->cc && $node->cc->is_available()) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
             // get license information
             $output = $node->cc->output();
 
