@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.16 2009/07/07 01:04:43 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.17 2009/07/12 03:06:45 balleyne Exp $
 
 /**
  * @file
@@ -388,12 +388,11 @@ function creativecommons_validate_license_uri($license_uri_key, $license_uri) {
 
 
 /**
- * Return default license
+ * Return default license. 'Empty' license returned if no default set.
  */
 function creativecommons_get_default_license() {
   $license_uri = creativecommons_get_default_license_uri();
-  if ($license_uri)
-    return new creativecommons_license($license_uri);
+  return new creativecommons_license($license_uri);
 }
 
 /**
