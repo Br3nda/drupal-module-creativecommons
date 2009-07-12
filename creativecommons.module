@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.19 2009/07/12 03:59:48 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.20 2009/07/12 04:20:29 balleyne Exp $
 
 /**
  * @file
@@ -78,20 +78,13 @@ function creativecommons_menu() {
   );
 
   $items['admin/settings/creativecommons/default'] = array(
-    'title' => 'default license',
+    'title' => 'site defaults',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('creativecommons_default_license'),
+    'page arguments' => array('creativecommons_site_defaults'),
     'access arguments' => array('administer creative commons'),
     'type' => MENU_LOCAL_TASK
   );
 
-  $items['admin/settings/creativecommons/site'] = array(
-    'title' => 'site license',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('creativecommons_site_license'),
-    'access arguments' => array('administer creative commons'),
-    'type' => MENU_LOCAL_TASK
-  );
   return $items;
 }
 
@@ -207,7 +200,7 @@ function creativecommons_settings_validate($form, &$form_state) {
 /**
  * Creative Commons site license settings form
  */
-function creativecommons_default_license() {
+function creativecommons_site_defaults() {
   global $base_url;
   $prefix = 'creativecommons_default';
 
@@ -223,7 +216,8 @@ function creativecommons_default_license() {
 
   $node->cc = $cc;
   $form = creativecommons_select_license_form($node, $prefix);
-  $form['#submit'][] = 'creativecommons_default_license_submit';
+  $form['select_license_form']['#type'] = 'fieldset';
+  $form['select_license_form']['#title'] = 'Default License';
 
   // append metadata fields and defaults site values
   global $base_url;
@@ -240,45 +234,21 @@ function creativecommons_default_license() {
     $form['select_license_form']['creativecommons_site']['metadata'] = $display2['creativecommons_site']['metadata'];
   }
 
-  return system_settings_form($form);
-}
-
-function creativecommons_default_license_validate($form, &$form_state) {
-  creativecommons_validate_license_uri('creativecommons_default_license_uri', $form_state['values']['creativecommons_default_license_uri']);
-}
-
-
-/**
- * Creative Commons site license display settings form
- */
-function creativecommons_site_license() {
-  $prefix = 'creativecommons_site_license';
-
-  // save fields
-  if ($_POST) {
-    variable_set($prefix .'_license_display', $_POST['edit'][$prefix .'_license_display']);
-    variable_set($prefix .'_license_embed', $_POST['edit'][$prefix .'_license_embed']);
-    variable_set($prefix .'_footer_text', $_POST['edit'][$prefix .'_footer_text']);
-  }
-
   // site license display
-  $form[$prefix .'_display'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Display default license as site license on each page?'),
-    '#return_value' => 1,
-    '#default_value' => variable_get($prefix .'_display', FALSE),
+  $form['creativecommons_site_license'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Site license'),
   );
-  /* TODO: use this?
-  $form[$prefix .'_license_embed'] = array(
+  $form['creativecommons_site_license']['creativecommons_site_license_display'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Embed license metadata in the HTML of the site'),
+    '#title' => t('Use default license as site wide license to be displayed on every page?'),
     '#return_value' => 1,
-    '#default_value' => variable_get($prefix .'_license_embed', FALSE),
-  );*/
-  $form[$prefix .'_additional_text'] = array(
+    '#default_value' => variable_get('creativecommons_site_license_display', FALSE),
+  );
+  $form['creativecommons_site_license']['creativecommons_site_license_additional_text'] = array(
     '#type' => 'textarea',
     '#title' => t('Additional text'),
-    '#default_value' => variable_get($prefix .'_additional_text', NULL),
+    '#default_value' => variable_get('creativecommons_site_license_additional_text', NULL),
     '#cols' => 60,
     '#rows' => 3,
     '#description' => t('This text will accompany the display of the site license.'),
@@ -286,7 +256,16 @@ function creativecommons_site_license() {
     '#required' => NULL,
   );
 
+  $form['#submit'][] = 'creativecommons_default_license_submit';
+
   return system_settings_form($form);
+}
+
+/**
+ * Validate default site license uri
+ */
+function creativecommons_site_defaults_validate($form, &$form_state) {
+  creativecommons_validate_license_uri('creativecommons_default_license_uri', $form_state['values']['creativecommons_default_license_uri']);
 }
 
 
