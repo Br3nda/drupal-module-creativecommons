@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.21 2009/07/12 09:31:07 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.22 2009/07/12 10:19:37 balleyne Exp $
 
 /**
  * @file
@@ -79,6 +79,14 @@ function creativecommons_menu() {
     'title' => 'site defaults',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_site_defaults'),
+    'access arguments' => array('administer creative commons'),
+    'type' => MENU_LOCAL_TASK
+  );
+
+  $items['admin/settings/creativecommons/types'] = array(
+    'title' => 'content types',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('creativecommons_types_form'),
     'access arguments' => array('administer creative commons'),
     'type' => MENU_LOCAL_TASK
   );
@@ -219,7 +227,7 @@ function creativecommons_site_defaults() {
     '#options' => creativecommons_get_available_licenses(NULL, TRUE, TRUE),
     '#description' => t('Select the site wide default license type for new content.'),
   );
-  
+
   $q = creativecommons_get_questions_array('standard');
   $form['creativecommons_default_license']['creativecommons_default_jurisdiction'] = array(
     '#type' => 'select',
@@ -228,7 +236,7 @@ function creativecommons_site_defaults() {
     '#options' => creativecommons_format_jurisdiction_array($q['jurisdiction']['answers']),
     '#default_value' => variable_get('creativecommons_default_jurisdiction', ''),
   );
-  
+
 
   // TODO: review
   /* append metadata fields and defaults site values
@@ -246,7 +254,7 @@ function creativecommons_site_defaults() {
     $form['select_license_form']['creativecommons_site']['metadata'] = $display2['creativecommons_site']['metadata'];
   }
    end review */
-  
+
 
   // site license display
   $form['creativecommons_site_license'] = array(
@@ -281,13 +289,37 @@ function creativecommons_site_defaults() {
 function creativecommons_site_defaults_validate($form, &$form_state) {
   $license_type = $form_state['values']['creativecommons_default_license_type'];
   $jurisdiction = $form_state['values']['creativecommons_default_jurisdiction'];
-  
+
   $license_uri = creativecommons_get_license_uri($license_type, $jurisdiction);
-  $form_state['values']['creativecommons_default_license_uri'] = $license_uri; 
+  $form_state['values']['creativecommons_default_license_uri'] = $license_uri;
 
   if ($license_uri) {
     creativecommons_validate_license_uri('creativecommons_default_license_type', $license_uri);
   }
+}
+
+/**
+ * Form builder. Allow administrator to enable Creative Commons licensing for
+ * content types in one central location.
+ */
+function creativecommons_types_form(){
+  $form = array();
+
+  $form['help'] = array(
+    '#type' => 'item',
+    '#value' => t('Enable Creative Commons licensing for the following content types.'),
+  );
+
+  foreach (node_get_types('names') as $type => $name) {
+    $form['creativecommons_'. $type] = array(
+      '#type' => 'checkbox',
+      '#title' => $name,
+      '#return_value' => 1,
+      '#default_value' => creativecommons_node_type_is_enabled($type),
+    );
+  }
+
+  return system_settings_form($form);
 }
 
 
@@ -650,7 +682,7 @@ function creativecommons_get_license_uri($license_type, $jurisdiction) {
       }
     }
   }
-  
+
   return $license_uri;
 }
 
@@ -874,7 +906,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
   switch ($op) {
     // settings   'form post replaced by form_api
     case 'load':
-      if (variable_get("creativecommons_$node->type", 1))
+      if (creativecommons_node_type_is_enabled($node->type))
         $node->cc = creativecommons_load($node);
       break;
 
@@ -908,20 +940,20 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
  */
 function creativecommons_form_alter(&$form, $form_state, $form_id) {
 
-  if (isset($form['type']) && $form['type']['#value'] .'_node_settings' == $form_id) {
-
-    $node->type = $form['type']['#value'];
-    $form['workflow']['creativecommons_'. $node->type] = array(
+  if ($form_id == 'node_type_form' && isset($form['identity']['type'])) {
+    $node->type = $form['#node_type']->type;
+    $form['workflow']['creativecommons'] = array(
       '#type' => 'checkbox',
-      '#title' => t("Apply the Creative Commons module to content type '". $node->type ."'"),
+      '#title' => t('Allow user to attach a Creative Commons license'),
+      '#description' => t('User will be able to select a license while editing content.'),
       '#return_value' => 1,
-      '#default_value' => variable_get("creativecommons_". $node->type, 1),
+      '#default_value' => creativecommons_node_type_is_enabled($node->type),
     );
   }
-
-  // Add CC license selection to node form
-  if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
-    if (variable_get("creativecommons_$node->type", 1)) {
+  elseif (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
+    // Add CC license selection to node form
+    $node = $form['#node'];
+    if (creativecommons_node_type_is_enabled($node->type)) {
         $form = array_merge($form, creativecommons_node_form($form['#node'], $form_state));
     }
   }
@@ -1311,6 +1343,13 @@ function creativecommons_load($node) {
 }
 
 
+/**
+ * Returns true if Creative Commons licensing is enabled for this node type;
+ * false otherwise
+ */
+function creativecommons_node_type_is_enabled($type) {
+  return variable_get('creativecommons_'. $type, 0);
+}
 /**
   *  Debug code
   */
