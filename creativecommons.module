@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.24 2009/07/14 23:30:01 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.25 2009/07/14 23:45:43 balleyne Exp $
 
 /**
  * @file
@@ -429,26 +429,6 @@ function creativecommons_get_default_license_uri() {
 }
 
 /**
- * Return array of license classes parsed from licenses.xml
- *
- * @return array of license classes in the form id => title
- */
-//TODO: deprecated -- make sure it's not being used, then delete
-function creativecommons_get_license_classes() {
-  $classes = array();
-  $classes_xml = creativecommons_return_xml('classes');
-  $parser = xml_parser_create();
-  xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
-  xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
-  xml_parse_into_struct($parser, $classes_xml, $classes_array, $index);
-  xml_parser_free($parser);
-  foreach ($classes_array as $key)
-    if ($key['tag'] == 'license' && $key['level'] == 2)
-      $classes[$key['attributes']['id']] = $key['value'];
-  return $classes;
-}
-
-/**
  * Parse license URI and return type.
  * @param $uri - a valid CC license uri
  * @return license type (e.g. 'by-sa')
@@ -489,7 +469,7 @@ function creativecommons_generic_license_name($full_name) {
 //TODO: this method is not in use -- questions seem more reliable
 function creativecommons_get_jurisdictions() {
   $uri = '/support/jurisdictions';
-  $xml = '<jurisdictions>'. creativecommons_return_xml('jurisdictions', $uri) .'</jurisdictions>';
+  $xml = '<jurisdictions>'. creativecommons_return_xml($uri) .'</jurisdictions>';
 
   $parser = xml_parser_create();
   xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
@@ -557,10 +537,10 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
   xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
 
-  $uri = 'simple/chooser';
+  $uri = '/simple/chooser';
   if ($options)
     $uri .= '?'. http_build_query($options);
-  $standard_xml = '<standard>'. creativecommons_return_xml('simple', $uri) .'</standard>';
+  $standard_xml = '<standard>'. creativecommons_return_xml($uri) .'</standard>';
 
   xml_parse_into_struct($parser, $standard_xml, $standard_licenses, $index);
   xml_parser_free($parser);
@@ -700,13 +680,13 @@ function creativecommons_api_request($uri, $headers = array(), $method = 'GET', 
  * $hrs		file should be updated if older then X number of hours
  * $update	force update of the file
  */
-function creativecommons_return_xml($filename, $uri = '', $hrs = 0, $update = FALSE) {
+function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
   // check for xml variable
-  $xml = variable_get('creativecommons_'. $filename, NULL);
+  $xml = variable_get('creativecommons_api_'. $uri, NULL);
   if ($xml) {
 
     // get timestamp ***directly from variables table*** to avoid caching
-    $result = db_query("SELECT value FROM {variable} WHERE name = '%s'", 'creativecommons_'. $filename .'_timestamp');
+    $result = db_query("SELECT value FROM {variable} WHERE name = '%s'", 'creativecommons_api_'. $uri .'_timestamp');
     if ($row = db_fetch_object($result)) {
       if ($ts = unserialize($row->value)) {
         $diff = (time() - $ts)/60/60;
@@ -725,8 +705,8 @@ function creativecommons_return_xml($filename, $uri = '', $hrs = 0, $update = FA
     $result = creativecommons_api_request($uri, $headers);
     switch ($result->code) {
       case 200:
-        variable_set('creativecommons_'. $filename, $result->data);
-        variable_set('creativecommons_'. $filename .'_timestamp', time());
+        variable_set('creativecommons_api_'. $uri, $result->data);
+        variable_set('creativecommons_api_'. $uri .'_timestamp', time());
         return $result->data;
         break;
       default:
@@ -804,7 +784,7 @@ function creativecommons_get_questions_array($license_id) {
 function creativecommons_get_questions_xml($license_id) {
   if ($license_id != 'none' && !is_null($license_id)) {
     $filename = $license_id .'.xml';
-    return creativecommons_return_xml($filename, '/license/'. $license_id .'/');
+    return creativecommons_return_xml('/license/'. $license_id .'/');
   }
   return;
 }

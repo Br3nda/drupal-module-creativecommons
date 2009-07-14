@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.13 2009/07/12 09:31:07 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.14 2009/07/14 23:45:43 balleyne Exp $
 
 /**
  * @file
@@ -22,7 +22,6 @@
 
 //TODO: PHP5
 //TODO: CC0 support
-//TODO: all rights reserved
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
 //TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)
 class creativecommons_license {
@@ -43,8 +42,9 @@ class creativecommons_license {
    */
   function __construct($license, $questions = NULL, $metadata = array()) {
     // don't load a blank license
-    if (!$license)
+    if (!$license) {
       return;
+    }
 
     $this->permissions = array();
     $this->permissions['requires'] = array();
@@ -87,7 +87,7 @@ class creativecommons_license {
    * Get license details from API by uri
    */
   function get_license_xml() {
-    return creativecommons_return_xml($this->license_uri, '/details?license-uri='. urlencode($this->license_uri));
+    return creativecommons_return_xml('/details?license-uri='. urlencode($this->license_uri));
   }
 
   /**
