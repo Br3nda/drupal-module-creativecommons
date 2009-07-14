@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.25 2009/07/14 23:45:43 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.26 2009/07/14 23:51:33 balleyne Exp $
 
 /**
  * @file
@@ -310,7 +310,7 @@ function creativecommons_types_form() {
   );
 
   foreach (node_get_types('names') as $type => $name) {
-    $form['creativecommons_'. $type] = array(
+    $form['creativecommons_type_'. $type] = array(
       '#type' => 'checkbox',
       '#title' => $name,
       '#return_value' => 1,
@@ -523,14 +523,14 @@ function creativecommons_format_jurisdiction_array($raw_array) {
  * @return array of all available license
  */
 function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
-  $types = array();
+  $licenses = array();
 
   // Unlicensed
-  $types[''] = 'None (All Rights Reserved)';
+  $licenses[''] = 'None (All Rights Reserved)';
 
   // License classes
-  $types['Creative Commons'] = array();
-  $types['Public Domain'] = array();
+  $licenses['Creative Commons'] = array();
+  $licenses['Public Domain'] = array();
 
   // Manual adjustments for 'standard' class
   $parser = xml_parser_create();
@@ -555,7 +555,7 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
       $license_name = $value_as_type ? creativecommons_generic_license_name($key['value']) : $key['value'];
 
       $license_class = $license_type == 'publicdomain' ? 'Public Domain' : 'Creative Commons';
-      $types[$license_class][$license_key] = $license_name;
+      $licenses[$license_class][$license_key] = $license_name;
     }
   }
 
@@ -565,11 +565,11 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   $zero_title = 'CC0 1.0 Universal';
 
   if ($value_as_type)
-    $types['Public Domain']['zero'] = creativecommons_generic_license_name($zero_title);
+    $licenses['Public Domain']['zero'] = creativecommons_generic_license_name($zero_title);
   else
-    $types['Public Domain'][$zero_uri] = $zero_title;
+    $licenses['Public Domain'][$zero_uri] = $zero_title;
 
-  return $types;
+  return $licenses;
 }
 
 
@@ -1315,7 +1315,7 @@ function creativecommons_load($node) {
  * false otherwise
  */
 function creativecommons_node_type_is_enabled($type) {
-  return variable_get('creativecommons_'. $type, 0);
+  return variable_get('creativecommons_type_'. $type, 0);
 }
 /**
   *  Debug code
