@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.15 2009/07/15 00:14:22 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.16 2009/07/15 08:18:07 balleyne Exp $
 
 /**
  * @file
@@ -21,15 +21,14 @@
  */
 
 //TODO: PHP5
-//TODO: CC0 support
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
 //TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)
 class creativecommons_license {
   // license attributes
-  var $license_uri;
-  var $license_name;
+  var $uri;
+  var $name;
   var $license_class;
-  var $license_type;
+  var $type;
   var $permissions;
   var $metadata;
 
@@ -46,12 +45,11 @@ class creativecommons_license {
       return;
     }
 
-    $this->license_class = 'standard'; // TODO: this is assumed...
-    $this->license_uri = $license_uri;
+    $this->uri = $license_uri;
     
     // Load license information
     $this->load();
-    
+
     $this->metadata = $metadata;
   }
 
@@ -60,13 +58,30 @@ class creativecommons_license {
    */
   function load(){
     // Load basic data from uri
-    $uri_parts = explode('/', $this->license_uri);
-    $this->license_type = $uri_parts[4];
+    $uri_parts = explode('/', $this->uri);
+    $this->type = $uri_parts[4];
     $this->version = $uri_parts[5];
     $this->jurisdiction = $uri_parts[6];
+
+    // TODO: Is PD really standard? Does it matter?
+    $this->license_class = 'standard';
+    
+    // Special Case: CC0
+    if ($this->type == 'zero') {
+      $this->name = 'CC0 1.0 Universal';
+      $this->license_class = 'publicdomain';
+      
+      $this->html = '<p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">
+        <a rel="license" href="'. $this->uri .'" style="text-decoration:none;">
+          <img src="http://i.creativecommons.org/l/zero/1.0/88x31.png" border="0" alt="CC0" />
+        </a>
+        <br />
+        To the extent possible under law, all copyright and related or neighboring rights to this work have been waived.</p>';
+      return;
+    }
   
     // Get license xml from API
-    $xml = creativecommons_return_xml('/details?license-uri='. urlencode($this->license_uri));
+    $xml = creativecommons_return_xml('/details?license-uri='. urlencode($this->uri));
     
     // Parse XML
     $parser = xml_parser_create();
@@ -96,12 +111,8 @@ class creativecommons_license {
           }
         break;
 
-        case 'license-uri':
-          $this->license_uri = $xn['value'];
-          break;
-
         case 'license-name':
-          $this->license_name = $xn['value'];
+          $this->name = $xn['value'];
           break;
 
         case 'rdf:RDF':
@@ -134,11 +145,12 @@ class creativecommons_license {
       return 'No License';
     }
     else if ($this->is_valid()) {
-      $class = $this->license_class == 'standard' ? 'Creative Commons ' : '';
-      return $class . $this->license_name;
+      // Special Case
+      $class = $this->type != 'zero' ? 'Creative Commons ' : '';
+      return $class . $this->name;
     }
     else {
-      return '"'. $this->license_uri .'"';
+      return '"'. $this->uri .'"';
     }
   }
   /**
@@ -174,21 +186,6 @@ class creativecommons_license {
         if ($this->license_class == 'publicdomain') {
           $images[] = CC_IMG_PATH .'/icon-publicdomain.png';
           break;
-        }
-
-        // sampling license
-        else if ($this->license_class == 'recombo') {
-          if ($this->license_name == 'Sampling 1.0') {
-            $images[] = CC_IMG_PATH .'/icon-sampling.png';
-          }
-          else if ($this->license_name == 'Sampling Plus 1.0') {
-            $images[] = CC_IMG_PATH .'/icon-samplingplus.png';
-          }
-          else if ($this->license_name == 'NonCommericial Sampling Plus 1.0') {
-            $images[] = CC_IMG_PATH .'/icon-noncommercial.png';
-            $images[] = CC_IMG_PATH .'/icon-samplingplus.png';
-          }
-          $images[] = CC_IMG_PATH .'/icon-attribution.png';
         }
 
         // creative commons / other license
@@ -232,7 +229,7 @@ class creativecommons_license {
    * Returns true if license set, false otherwise
    */
   function has_license() {
-    return !empty($this->license_uri);
+    return !empty($this->uri);
   }
 
   /**
@@ -259,7 +256,7 @@ class creativecommons_license {
 
     // Check if license type is available
     $available_license_types = creativecommons_get_available_license_types();
-    if (!in_array($this->license_type, $available_license_types))
+    if (!in_array($this->type, $available_license_types))
       return FALSE;
 
     return TRUE;
@@ -277,9 +274,9 @@ class creativecommons_license {
 
     /* $txt = 'This work is licensed under a '.
       l(t('Creative Commons License'),
-        $this->license_uri,
+        $this->uri,
         array(
-          'attributes' => array('rel' => 'license', 'title' => $this->license_name),
+          'attributes' => array('rel' => 'license', 'title' => $this->name),
         )
       ) .".\n";
     $html = "\n<!--Creative Commons License-->\n";
@@ -305,7 +302,7 @@ class creativecommons_license {
       foreach ($img as $img_tag)
         $html .= l(
           $img_tag,
-          $this->license_uri,
+          $this->uri,
           array(
             'attributes' => array('rel' => 'license'),
             'html' => TRUE,
@@ -335,9 +332,10 @@ class creativecommons_license {
     if (!$this->has_license())
       return;
 
-
-    foreach ($this->rdf['attributes'] as $attr => $val)
-      $a .= " $attr=\"$val\"";
+    if ($this->rdf) {
+      foreach ($this->rdf['attributes'] as $attr => $val)
+        $a .= " $attr=\"$val\"";
+    }
     $rdf = "<rdf:RDF$a>\n";
 
     // metadata
@@ -367,14 +365,18 @@ class creativecommons_license {
         }
       }
     }
-    $rdf .= "<license rdf:resource=\"". $this->license_uri ."\" />\n";
+    $rdf .= "<license rdf:resource=\"". $this->uri ."\" />\n";
     $rdf .= "</Work>\n";
 
     // permissions
-    $rdf .= "<license rdf:about=\"". $this->license_uri ."\">\n";
-    foreach ($this->permissions as $name => $perm)
-      foreach ($perm as $v)
-        $rdf .= "<$name rdf:resource=\"$v\" />\n";
+    $rdf .= "<license rdf:about=\"". $this->uri ."\">\n";
+    if ($this->permissions) {
+      foreach ($this->permissions as $name => $perm) {
+        foreach ($perm as $v) {
+          $rdf .= "<$name rdf:resource=\"$v\" />\n";
+        }
+      }
+    }
 
     $rdf .= "</license>\n";
     $rdf .= "</rdf:RDF>";
@@ -408,7 +410,7 @@ class creativecommons_license {
     }
 
     if ($nid && $this->has_license() && $this->is_available()) {
-      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $nid, $this->license_uri);
+      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $nid, $this->uri);
       return $result;
     }
   }

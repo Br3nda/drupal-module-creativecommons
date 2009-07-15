@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.27 2009/07/15 00:14:22 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.28 2009/07/15 08:18:07 balleyne Exp $
 
 /**
  * @file
@@ -20,6 +20,7 @@
  *
  */
 
+//TODO: what happens with no available licenses?
 //TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
 //TODO: hook_perm for setting licenses, not just admin
@@ -248,7 +249,7 @@ function creativecommons_site_defaults() {
       $defaults[$mn] = $gv;
   }
 
-  if (!is_null($node->cc->license_type) && $node->cc->license_type != 'none') {
+  if (!is_null($node->cc->type) && $node->cc->type != 'none') {
     $display2 = creativecommons_build_metadata_fields($node, $prefix, $defaults);
     $form['select_license_form']['creativecommons_site']['metadata'] = $display2['creativecommons_site']['metadata'];
   }
@@ -338,7 +339,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
   }
   // Otherwise, use license uri attached to node
   elseif ($node->cc) {
-    $selected_license_uri = $node->cc->license_uri;
+    $selected_license_uri = $node->cc->uri;
   }
   // Otherwise, use default uri
   else {
@@ -561,13 +562,12 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
 
   //Add CC0
   //TODO: http://creativecommons.org/license/zero/partner?lang=en&partner={partner}&exit_url={exit_url}&license_code=publicdomain&stylesheet={stylesheet}
-  $zero_uri = 'http://creativecommons.org/publicdomain/zero/1.0/';
-  $zero_title = 'CC0 1.0 Universal';
+  $zero = new creativecommons_license('http://creativecommons.org/publicdomain/zero/1.0/');
 
   if ($value_as_type)
-    $licenses['Public Domain']['zero'] = creativecommons_generic_license_name($zero_title);
+    $licenses['Public Domain'][$zero->type] = creativecommons_generic_license_name($zero->get_full_license_name());
   else
-    $licenses['Public Domain'][$zero_uri] = $zero_title;
+    $licenses['Public Domain'][$zero->uri] = $zero->get_full_license_name();
 
   return $licenses;
 }
@@ -934,7 +934,7 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
 function creativecommons_xml($node) {
   if ($node->cc) {
     return array(
-      array('key' => 'xmlns:creativeCommons', 'value' => $node->cc->license_uri)
+      array('key' => 'xmlns:creativeCommons', 'value' => $node->cc->uri)
     );
   }
   return;
@@ -1055,8 +1055,8 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
   // built html output
   $output = t($cc_txt);
 
-  //$selected = $node->cc_license;
-  $selected = (is_null($node->cc_license)) ? $node->cc->license_type  : $node->cc_license;
+  //$selected = $node->cc;
+  $selected = (is_null($node->cc)) ? $node->cc->type  : $node->cc;
   $output1 = creativecommons_select_license_form($node, 'cc_license_uri', $form_state['values']['creativecommons']['select_license_form']);
 
 
@@ -1082,7 +1082,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
 
 
 /// ///////////////////////////////////
-//if (!is_null($node->cc_license->license_type) && $node->cc_license->license_type != 'none')
+//if (!is_null($node->cc->type) && $node->cc->type != 'none')
 //  $output .= cc_para("not an empty license");
 /// //////////////////////////////////////
 
