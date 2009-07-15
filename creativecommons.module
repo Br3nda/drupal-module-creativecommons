@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.26 2009/07/14 23:51:33 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.27 2009/07/15 00:14:22 balleyne Exp $
 
 /**
  * @file
@@ -1199,22 +1199,6 @@ function creativecommons_node_form_validate($form, &$form_state) {
    * needed.
    */
   creativecommons_validate_license_uri('cc_license_uri', $form_state['values']['creativecommons']['select_license_form']['cc_license_uri']);
-
-/*  $license_uri = $form_state['values']['creativecommons']['select_license_form']['cc_license_uri'];
-  $cc = new creativecommons_license($license_uri);
-  if (!$cc->is_available()) {
-    form_set_error('creativecommons', $cc->get_full_license_name() .' is no longer available');
-  }*/
-
-  // This would be require to check license using questions
-  /* $questions = creativecommons_get_questions_array($node->cc_license);
-  // loop thru ?s, set to current val, else default to first answer in array
-  foreach ($questions as $k => $v) {
-    if (in_array($node->cc[$k], $v['answers']))
-      $questions[$k]['selected'] = $node->cc[$k];
-    else
-      $questions[$k]['selected'] = current($v['answers']);
-  }*/
 }
 
 /**
@@ -1242,28 +1226,6 @@ return;
     //TODO: hook_validate() for this check
     if ($cc && $cc->is_available())
       $node->cc = $cc;
-
-
-
-    //TODO: make questions optional
-    /* $p = $_POST['cc_license'];
-    $questions = creativecommons_get_questions_array($p);
-    foreach ($questions as $k => $v) {
-      $post_val = $_POST['edit']['cc'][$k];
-      if (in_array($post_val, $v['answers'])) {
-        $questions[$k]['selected'] = $post_val;
-      }
-      else {
-        // default to first answer in array
-        $questions[$k]['selected'] = current($v['answers']);
-      }
-    }
-
-    if (!$_POST['edit']['cc']['metadata']['source'])
-      $_POST['edit']['cc']['metadata']['source'] = $base_url;
-    $cc = new creativecommons_license($p, $questions, $_POST['edit']['cc']['metadata']);
-    $node->cc = $cc;
-    */
 
 }
 

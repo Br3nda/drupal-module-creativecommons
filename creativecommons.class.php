@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.14 2009/07/14 23:45:43 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.15 2009/07/15 00:14:22 balleyne Exp $
 
 /**
  * @file
@@ -40,90 +40,47 @@ class creativecommons_license {
   /**
    * Initialize object
    */
-  function __construct($license, $questions = NULL, $metadata = array()) {
+  function __construct($license_uri, $metadata = array()) {
     // don't load a blank license
-    if (!$license) {
+    if (!$license_uri) {
       return;
     }
 
+    $this->license_class = 'standard'; // TODO: this is assumed...
+    $this->license_uri = $license_uri;
+    
+    // Load license information
+    $this->load();
+    
+    $this->metadata = $metadata;
+  }
+
+  /**
+   * Load basic information from uri and XML data from API into object.
+   */
+  function load(){
+    // Load basic data from uri
+    $uri_parts = explode('/', $this->license_uri);
+    $this->license_type = $uri_parts[4];
+    $this->version = $uri_parts[5];
+    $this->jurisdiction = $uri_parts[6];
+  
+    // Get license xml from API
+    $xml = creativecommons_return_xml('/details?license-uri='. urlencode($this->license_uri));
+    
+    // Parse XML
+    $parser = xml_parser_create();
+    xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
+    xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
+    xml_parse_into_struct($parser, $xml, $values, $tags);
+    xml_parser_free($parser);
+    
+    // Extract values
     $this->permissions = array();
     $this->permissions['requires'] = array();
     $this->permissions['prohibits'] = array();
     $this->permissions['permits'] = array();
-
-    if ($questions) {
-      //TODO: review
-      $this->license_type = $license;
-      $xml = $this->post_answers($questions);
-      foreach ($questions as $q => $a)
-        $this->$q = $a['selected'];
-    }
-    else {
-      $this->license_class = 'standard'; // TODO: this is assumed...
-      $this->license_uri = $license;
-      $this->license_type = creativecommons_get_license_type_from_uri($this->license_uri);
-      $xml = $this->get_license_xml();
-    }
-
-
-    if ($xml) {
-      $parser = xml_parser_create();
-      xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
-      xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
-      xml_parse_into_struct($parser, $xml, $values, $tags);
-      xml_parser_free($parser);
-      $this->extract_values($values, $tags);
-    }
-
-    $this->metadata = $metadata;
-
-    // TODO: is there a better way to do this? will this work with questions too?
-    preg_match('/<html>(.*)<\/html>/', $xml, $matches);
-    $this->html = $matches[1];
-  }
-
-
-  /**
-   * Get license details from API by uri
-   */
-  function get_license_xml() {
-    return creativecommons_return_xml('/details?license-uri='. urlencode($this->license_uri));
-  }
-
-  /**
-   * Post answer data to creative commons web api, return xml response.
-   */
-  function post_answers($questions) {
-    $id = $this->license_class;
-    if (isset($id) && $id != 'none') {
-
-      // required header
-      $headers = array();
-      $headers['Content-Type'] = 'application/x-www-form-urlencoded';
-
-      // request
-      $uri = '/license/'. $id .'/issue';
-
-      foreach ($questions as $q => $a)
-        $answer_xml .= "<$q>". $a['selected'] ."</$q>";
-      $answer_xml = "<answers><license-$id>$answer_xml</license-$id></answers>";
-
-      // post to cc api
-      $post_data = 'answers='. urlencode($answer_xml) ."\n";
-
-      //TODO: use return_xml here?
-      $response = creativecommons_api_request($uri, $headers, 'POST', $post_data);
-      if ($response->code == 200)
-        return $response->data;
-    }
-    return;
-  }
-
-
-  /**
-   * Extract values from array of xml data.
-   */
-  function extract_values($values, $tags) {
+    
     foreach ($values as $xn) {
       switch ($xn['tag']) {
         case 'error':
@@ -162,6 +119,11 @@ class creativecommons_license {
           break;
       }
     }
+    
+          
+    // Special case: HTML TODO: is there a better way to do this?
+    preg_match('/<html>(.*)<\/html>/', $xml, $matches);
+    $this->html = $matches[1];
   }
 
   /**
