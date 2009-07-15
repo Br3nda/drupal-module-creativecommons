@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.16 2009/07/15 08:18:07 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.17 2009/07/15 11:40:47 balleyne Exp $
 
 /**
  * @file
@@ -42,6 +42,8 @@ class creativecommons_license {
   function __construct($license_uri, $metadata = array()) {
     // don't load a blank license
     if (!$license_uri) {
+      $this->name = 'None (All Rights Reserved)';
+      $this->type = '';
       return;
     }
 
@@ -105,7 +107,7 @@ class creativecommons_license {
             $this->error['message'] = $values[2]['value'];
             //TODO: should this set the error here?
             $message = 'CC API Error ('. $this->error['id'] .'): '. $this->error['message']
-              . ($this->error['id'] == 'invalid' ? ' '. $this->get_full_license_name() : '');
+              . ($this->error['id'] == 'invalid' ? ' '. $this->get_full_name() : '');
             drupal_set_message($message, 'error');
 
           }
@@ -140,13 +142,10 @@ class creativecommons_license {
   /**
    * Return full license name.
    */
-  function get_full_license_name() {
-    if (!$this->has_license()) {
-      return 'No License';
-    }
-    else if ($this->is_valid()) {
+  function get_full_name() {
+    if ($this->is_valid()) {
       // Special Case
-      $class = $this->type != 'zero' ? 'Creative Commons ' : '';
+      $class = ($this->type && $this->type != 'zero') ? 'Creative Commons ' : '';
       return $class . $this->name;
     }
     else {
@@ -246,10 +245,6 @@ class creativecommons_license {
    * available. Blank licenses are 'available'.
    */
   function is_available() {
-    // A blank license is technically 'available'
-    if (!$this->has_license())
-      return TRUE;
-
     // Check if license is valid
     if (!$this->is_valid())
       return FALSE;

@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.32 2009/07/15 10:09:07 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.33 2009/07/15 11:40:47 balleyne Exp $
 
 /**
  * @file
@@ -206,8 +206,8 @@ function creativecommons_site_defaults() {
   $cc = creativecommons_get_default_license();
 
   // Check to see if default license is still available
-  if (!$cc->is_available()) {
-    $message = $cc->get_full_license_name();
+  if ($cc->has_license() && !$cc->is_available()) {
+    $message = $cc->get_full_name();
     $message .= $cc->is_valid() ? ' is no longer available' : ' is not valid';
     drupal_set_message($message, 'warning');
   }
@@ -284,22 +284,7 @@ function creativecommons_site_defaults() {
     '#required' => NULL,
   );
 
-  $form['#submit'][] = 'creativecommons_site_defaults_submit';
-
   return system_settings_form($form);
-}
-
-/**
- * Validate default site license uri
- */
-function creativecommons_site_defaults_validate($form, &$form_state) {
-  $license_type = $form_state['values']['creativecommons_default_license_type'];
-  $jurisdiction = $form_state['values']['creativecommons_default_jurisdiction'];
-
-  if ($license_type) {
-    $license_uri = creativecommons_get_license_uri_from_available($license_type, $jurisdiction);
-    creativecommons_validate_license_uri('creativecommons_default_license_type', $license_uri);
-  }
 }
 
 /**
@@ -336,40 +321,70 @@ function creativecommons_types_form() {
  */
 function creativecommons_select_license_form($node, $key, $form_state_segment = NULL) {
   // load available licenses
-  $jurisdiction = variable_get('creativecommons_default_jurisdiction', '');
-  $available_licenses = creativecommons_get_available_licenses( array('jurisdiction' => $jurisdiction) );
+  $default_jurisdiction = variable_get('creativecommons_default_jurisdiction', '');
+  $available_licenses = creativecommons_get_available_licenses( array('jurisdiction' => $default_jurisdiction) );
+  $available_license_types = creativecommons_get_available_license_types();
+  $jurisdictions = creativecommons_get_jurisdictions();
 
-  // If license uri selected in form, use that
+
+  /**
+   * Determine which license to select from the list.
+   *
+   * Three cases (in order):
+   *  1. license uri already selected in form (i.e. preview)
+   *  2. license uri is already attached to the node
+   *  3. No license information selected or attached, so fall back to defaults.
+   */
+   
+  // Case 1: If license uri selected in form, use that
   if ($form_state_segment && isset($form_state_segment[$key])) {
-    $selected_license_uri = $form_state_segment[$key];
+    $desired_license = new creativecommons_license($form_state_segment[$key]);
   }
-  // Otherwise, use license uri attached to node
+  // Case 2: Otherwise, use license uri attached to node
   elseif ($node->cc) {
-    $selected_license_uri = $node->cc->uri;
+    $desired_license = new creativecommons_license($node->cc->uri);
   }
-  // Otherwise, use default uri
+  // Case 3: Otherwise, use default uri
   else {
-    $selected_license_uri = creativecommons_get_default_license_uri();
+    $desired_license = creativecommons_get_default_license();
   }
 
-  // TODO: make this more efficient
-  // Double-check URI to make sure it matches up with correct license type for this jurisdiction
-  $old_selected_license_uri = $selected_license_uri;
-  $license_type = creativecommons_get_license_type_from_uri($selected_license_uri);
-  $selected_license_uri = creativecommons_get_license_uri_from_available($license_type, $jurisdiction);
 
-  // Warn user if changed
-  if ($selected_license_uri != $old_selected_license_uri) {
-    //TODO: improve message: three cases (version change, jurisdiction change, availability change)
-    //TODO: this doesn't work for None selections
-    drupal_set_message('Your license selection has been automatically altered. Please review.', 'warning');
-    /**
-      * Cases...
-      * 1) jurisdiction changed
-      * 2) version changed
-      * 3) license was made unavailable
-      */
+
+  /**
+   * Check the desired URI against the list.
+   *
+   * There are three (known) cases (in order) where the desired uri won't be in 
+   * the list:
+   *  1. the license type is no longer available;
+   *  2. the default jurisdiction has changed;
+   *  3. a new version of the license has been released.
+   */
+  $selected_license_uri = creativecommons_get_license_uri_from_available($desired_license->type, $default_jurisdiction);
+
+  // Warn user if changed (if selected doesn't match desired, or (special case) if node->cc is None but that's not available)
+  if (($desired_license->uri != $selected_license_uri) || ($node->cc && !$desired_license->uri && !$desired_license->is_available())) {
+    $selected_license = new creativecommons_license($selected_license_uri);
+
+    // Case 1: License is no longer available
+    if (!$desired_license->is_available()) {
+      $message = '"'. $desired_license->get_full_name() .'" is no longer an option. Please review license selection.';
+    }
+    // Case 2: Jurisdiction change (same license type)
+    elseif ($desired_license->jurisdiction != $selected_license->jurisdiction) {
+      $message = 'The jurisdiction of your license will be changed from '. $jurisdictions[$desired_license->jurisdiction] .' to '. $jurisdictions[$selected_license->jurisdiction] .'. Please review.';
+    }
+    // Case 3: Version change (upgrade)
+    elseif ($desired_license->version != $selected_license->version) {
+      $message = 'The version of your license will be changed from '. $desired_license->version .' to '. $selected_license->version .'. Please review.';
+    }
+    // Any other cases?
+    else {
+      $message = 'Your license selection is set to be altered. Please review.';
+    }
+    drupal_set_message($message, 'warning');
   }
+
 
 
   /**
@@ -382,12 +397,15 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
     *  - if content had no license (None), but that is no longer an available type
     *  - if there is no site default set, but None is not an available type
     */
-  $available_license_types = creativecommons_get_available_license_types();
   if (!$selected_license_uri && !in_array('', $available_license_types)) {
     $available_licenses = array_merge( array('' => ''), $available_licenses);
   }
 
-  // Form element
+
+
+  /**
+   * (After all this hard work,) the form element.
+   */
   $form['select_license_form'][$key] = array(
     '#type' => 'select',
     '#title' => t('Creative Commons License'),
@@ -408,8 +426,8 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
 function creativecommons_validate_license_uri($license_uri_key, $license_uri) {
   // Check to see if selected license is available
   $cc = new creativecommons_license($license_uri);
-  if (!$cc->is_available()) {
-    $message = $cc->get_full_license_name();
+  if ($cc->has_license() && !$cc->is_available()) {
+    $message = $cc->get_full_name();
     $message .= $cc->is_valid() ? ' is no longer available.' : ' is not a valid license.';
 
     form_set_error($license_uri_key, $message);
@@ -534,7 +552,8 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   $licenses = array();
 
   // Unlicensed
-  $licenses[''] = 'None (All Rights Reserved)';
+  $blank_license = new creativecommons_license('');
+  $licenses[''] = $blank_license->get_full_name();
 
   // License classes
   $licenses['Creative Commons'] = array();
@@ -572,9 +591,9 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   $zero = new creativecommons_license('http://creativecommons.org/publicdomain/zero/1.0/');
 
   if ($value_as_type)
-    $licenses['Public Domain'][$zero->type] = creativecommons_generic_license_name($zero->get_full_license_name());
+    $licenses['Public Domain'][$zero->type] = creativecommons_generic_license_name($zero->get_full_name());
   else
-    $licenses['Public Domain'][$zero->uri] = $zero->get_full_license_name();
+    $licenses['Public Domain'][$zero->uri] = $zero->get_full_name();
 
   return $licenses;
 }
@@ -1200,18 +1219,18 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
 
 
 /**
-  * Validate the Creative Commons node form.
-  */
+ * Validate the Creative Commons node form.
+ *
+ * The case of a non-available license is actually handled well by Drupal already.
+ * Drupal says, "an illegal choice has been detected," because only available
+ * licenses appear in the form.
+ *
+ * However, it seems that if a license becomes unavailable after a form is
+ * already in edit, or at least the preview stage, then the following check is
+ * still needed.
+ */
 function creativecommons_node_form_validate($form, &$form_state) {
-  /**
-   * The case of a non-available license is actually handled well by Drupal already.
-   * Drupal says, "an illegal choice has been detected," because only available
-   * licenses appear in the form.
-   *
-   * However, it seems that if a license becomes unavailable after a form is
-   * already in edit, or at least the preview stage, then the following check is
-   * needed.
-   */
+
   creativecommons_validate_license_uri('cc_license_uri', $form_state['values']['creativecommons']['select_license_form']['cc_license_uri']);
 }
 
