@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.3 2009/07/04 10:49:44 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.4 2009/07/15 09:36:18 balleyne Exp $
 
 /**
  * @file
@@ -43,7 +43,21 @@ function creativecommons_install() {
  * Implementation of hook_uninstall().
  */
 function creativecommons_uninstall() {
+  // Uninstall database
   drupal_uninstall_schema('creativecommons');
-  //TODO: unset variables?
+
+  // Uninstall settings variables
+  variable_del('creativecommons_available_license_types');
+  variable_del('creativecommons_rdf');
+  // TODO: required metadata settings
+  
+  // Uninstall site defaults
+  variable_del('creativecommons_default_license_type');
+  variable_del('creativecommons_default_jurisdiction');
+  variable_del('creativecommons_site_license_display');
+  variable_del('creativecommons_site_license_additional_text');
+  
+
+  //TODO: unset api variables, type variables
 }
 
