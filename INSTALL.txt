@@ -2,10 +2,10 @@ This module allows users to assign a Creative Commons license to the content
 of a node.  It uses to Creatve Commons API to update when new licenses are 
 made available.
 
-Licenses are diplayed using a Creative Commons license block.
+Licenses are diplayed using a Creative Commons Node License block.
 
-Administators can also select a site license, which can be displayed in the 
-footer of each page.
+Administators can also set the default license as a site-wide license, which
+can be displayed with the Creative Commons Site License block.
 
 
 == Questions/Comments? ==
@@ -15,6 +15,10 @@ Blaise Alleyne <blaise@alleyneinc.net>
 
 
 == Installation ==
+NOTE: if you installed a 6.x-dev snapshot from early July (or earlier than July),
+you may have to reinstall the module in order to get the database schema updates
+need to run
+
 1.  Uncompress the creativecommons.tar.gz file to your modules directory.
 
 2.  Turn on the module under admin > modules.
@@ -24,17 +28,17 @@ you must have at least one license selected (under "License Selection") for
 the module to work.  You can also, optionally, select required metadata 
 fields, and the manner in which the license will be displayed.
 
-4. Under admin > settings > Creative Commons > default you can set a default license for the entire site.
+4. Under admin > settings > Creative Commons > site defaults you can set a 
+default license type and jurisdiction for the site, which can optionally be used
+as a site-wide license.
 
-5.  Under admin > settings > Creative Commons > site license, you can choose to use the default license as a site-wide license to be displayed on every page.
-
-6.  [not yet implemented] Under admin > content > configure > default workflow, you can select
+5. Under admin > settings> Creative Commons > content types, you can select
 which node types can have a license appended to them.  For example, you
-might wish to allow Creative Commons licenses to be atttached to blog
+might wish to allow Creative Commons licenses to be attached to blog
 posts, but not to forum posts.
 
-7.  Under admin > users > configure > permissions, select the user roles
+6. [not yet implemented] Under admin > users > configure > permissions, select the user roles
 that will have permission to attach licenses to nodes.
 
-8.  That's all folks... now your users can assign a Creative Commons
+7.  That's all folks... now your users can assign a Creative Commons
 license to their new content.
