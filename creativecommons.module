@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.31 2009/07/15 09:37:56 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.32 2009/07/15 10:09:07 balleyne Exp $
 
 /**
  * @file
@@ -49,7 +49,7 @@ function cc_para() {
  * Implementation of hook_perm().
  */
 function creativecommons_perm() {
-  return array('administer creative commons');
+  return array('administer creative commons', 'attach creative commons');
 }
 
 
@@ -133,7 +133,7 @@ function creativecommons_settings() {
     '#title' => t('Available license types'),
     '#default_value' => $available_license_types,
     '#options' => $license_array_keys,
-    '#description' => t('Select the license types to make available to users.'),
+    '#description' => t('Select the license types to make available to users. (Hold CTRL to select multiple.)'),
     '#multiple' => TRUE,
     '#required' => TRUE,
   );
@@ -374,20 +374,18 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
 
   /**
     * If selected_license_uri is blank but None is not an available type,
-    * then a blank entry is placed at the beginning of the list and the field
-    * is set to 'required'. This forces the user to actively select a license,
+    * then a blank entry is placed at the beginning of the list (and the field 
+    * is set to required). This forces the user to actively select a license,
     * rather than just defaulting to the first on the list.
     *
     * This will only arise in the following cases:
     *  - if content had no license (None), but that is no longer an available type
     *  - if there is no site default set, but None is not an available type
     */
-  $required = FALSE;
-  if (!$selected_license_uri && !in_array('', $available_licenses)) {
-    $required = TRUE;
+  $available_license_types = creativecommons_get_available_license_types();
+  if (!$selected_license_uri && !in_array('', $available_license_types)) {
     $available_licenses = array_merge( array('' => ''), $available_licenses);
   }
-
 
   // Form element
   $form['select_license_form'][$key] = array(
@@ -397,7 +395,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
     '#options' => $available_licenses,
     '#attributes' => $extra,
     '#description' => NULL,
-    '#required' => $required,
+    '#required' => !in_array('', $available_license_types) ? TRUE : FALSE,
   );
 
 
@@ -1049,8 +1047,8 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
 function creativecommons_node_form($node, $form_state) {
   //TODO: review metadata
 
-  // if no licenses available (in admin > settings > creative commons) then no form displayed
-  if (!creativecommons_get_available_license_types()) {
+  // Check user permissions and license availability
+  if (!user_access('attach creative commons') || !creativecommons_get_available_license_types()) {
     return array();
   }
 
