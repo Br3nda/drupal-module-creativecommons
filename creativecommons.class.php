@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.18 2009/07/24 05:52:32 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.19 2009/07/24 07:40:58 balleyne Exp $
 
 /**
  * @file
@@ -22,7 +22,7 @@
 
 //TODO: PHP5
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
-//TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)
+//TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)?
 class creativecommons_license {
   // license attributes
   var $uri;
@@ -42,7 +42,7 @@ class creativecommons_license {
   function __construct($license_uri, $metadata = array()) {
     // Store metadata
     $this->metadata = $metadata;
-  
+
     // don't load a blank license
     if (!$license_uri) {
       $this->name = 'None (All Rights Reserved)';
@@ -58,7 +58,7 @@ class creativecommons_license {
   /**
    * Load basic information from uri and XML data from API into object.
    */
-  function load(){
+  function load() {
     // Load basic data from uri
     $uri_parts = explode('/', $this->uri);
     $this->type = $uri_parts[4];
@@ -67,12 +67,12 @@ class creativecommons_license {
 
     // TODO: Is PD really standard? Does it matter?
     $this->license_class = 'standard';
-    
+
     // Special Case: CC0
     if ($this->type == 'zero') {
       $this->name = 'CC0 1.0 Universal';
       $this->license_class = 'publicdomain';
-      
+
       $this->html = '<p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">
         <a rel="license" href="'. $this->uri .'" style="text-decoration:none;">
           <img src="http://i.creativecommons.org/l/zero/1.0/88x31.png" border="0" alt="CC0" />
@@ -81,23 +81,23 @@ class creativecommons_license {
         To the extent possible under law, all copyright and related or neighboring rights to this work have been waived.</p>';
       return;
     }
-  
+
     // Get license xml from API
     $xml = creativecommons_return_xml('/details?license-uri='. urlencode($this->uri));
-    
+
     // Parse XML
     $parser = xml_parser_create();
     xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
     xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
     xml_parse_into_struct($parser, $xml, $values, $tags);
     xml_parser_free($parser);
-    
+
     // Extract values
     $this->permissions = array();
     $this->permissions['requires'] = array();
     $this->permissions['prohibits'] = array();
     $this->permissions['permits'] = array();
-    
+
     foreach ($values as $xn) {
       switch ($xn['tag']) {
         case 'error':
@@ -132,8 +132,8 @@ class creativecommons_license {
           break;
       }
     }
-    
-          
+
+
     // Special case: HTML TODO: is there a better way to do this?
     preg_match('/<html>(.*)<\/html>/', $xml, $matches);
     $this->html = $matches[1];
@@ -221,12 +221,12 @@ class creativecommons_license {
    * Returns true if any metadata fields are non-blank, false otherwise.
    */
   function has_metadata() {
-    foreach($this->metadata as $key => $value) {
+    foreach ($this->metadata as $key => $value) {
       if (!empty($value)) {
         return TRUE;
       }
     }
-    
+
     return FALSE;
   }
   /**
@@ -345,7 +345,7 @@ class creativecommons_license {
       foreach ($this->metadata as $key => $value) {
         if ($value) {
           $ns = 'dc';
-          
+
           switch ($key) {
 
             case 'type':
@@ -414,7 +414,7 @@ class creativecommons_license {
           $this->metadata['date'],
           $this->metadata['source']
         );
-      
+
       //TODO: check for error here?
       return $result;
     }

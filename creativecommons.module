@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.34 2009/07/24 05:52:32 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.35 2009/07/24 07:40:58 balleyne Exp $
 
 /**
  * @file
@@ -115,8 +115,6 @@ function creativecommons_help($path, $arg) {
  * General Creative Commons settings page.
  */
 function creativecommons_settings() {
-  creativecommons_licenses_enabled();
-  
   $available_license_types = creativecommons_get_available_license_types();
   $license_array_keys = creativecommons_get_licenses(array('jurisdiction' => variable_get('creativecommons_default_jurisdiction', '')), TRUE);
   $metadata_types_keys = creativecommons_get_metadata_types();
@@ -136,7 +134,6 @@ function creativecommons_settings() {
     '#required' => TRUE,
   );
 
-  //TODO: change to 'required_metadata' to be more clear
   $form['creativecommons_license']['creativecommons_required_metadata'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Required metadata fields'),
@@ -198,7 +195,7 @@ function creativecommons_licenses_enabled() {
  */
 function creativecommons_site_defaults() {
   creativecommons_licenses_enabled();
-  
+
   $prefix = 'creativecommons_default';
 
   // Load default license
@@ -295,20 +292,13 @@ function creativecommons_types_form() {
 
   $form = array();
 
-  $form['help'] = array(
-    '#type' => 'item',
-    '#value' => t('Enable Creative Commons licensing for the following content types.'),
+  $form['creativecommons_license']['creativecommons_node_types'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Content Types'),
+    '#default_value' => variable_get('creativecommons_node_types', array()),
+    '#options' => node_get_types('names'),
+    '#description' => t('Enable Creative Commons licensing for the following content types.'),
   );
-
-  //TODO: checkboxes instead of loop
-  foreach (node_get_types('names') as $type => $name) {
-    $form['creativecommons_type_'. $type] = array(
-      '#type' => 'checkbox',
-      '#title' => $name,
-      '#return_value' => 1,
-      '#default_value' => creativecommons_node_type_is_enabled($type),
-    );
-  }
 
   return system_settings_form($form);
 }
@@ -335,7 +325,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
    *  2. license uri is already attached to the node
    *  3. No license information selected or attached, so fall back to defaults.
    */
-   
+
   // Case 1: If license uri selected in form, use that
   if ($form_state_segment && isset($form_state_segment[$key])) {
     $desired_license = new creativecommons_license($form_state_segment[$key]);
@@ -354,7 +344,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
   /**
    * Check the desired URI against the list.
    *
-   * There are three (known) cases (in order) where the desired uri won't be in 
+   * There are three (known) cases (in order) where the desired uri won't be in
    * the list:
    *  1. the license type is no longer available;
    *  2. the default jurisdiction has changed;
@@ -389,7 +379,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
 
   /**
     * If selected_license_uri is blank but None is not an available type,
-    * then a blank entry is placed at the beginning of the list (and the field 
+    * then a blank entry is placed at the beginning of the list (and the field
     * is set to required). This forces the user to actively select a license,
     * rather than just defaulting to the first on the list.
     *
@@ -450,7 +440,7 @@ function creativecommons_get_default_license() {
 function creativecommons_get_default_license_uri() {
   $default_license_type = variable_get('creativecommons_default_license_type', '');
   $default_jurisdiction = variable_get('creativecommons_default_jurisdiction', '');
-  
+
   return creativecommons_get_license_uri_from_available($default_license_type, $default_jurisdiction);
 }
 
@@ -756,7 +746,7 @@ function creativecommons_get_metadata_types() {
     // from http://creativecommons.org/ns
     'attributionName' => t('Attribution Name'),
     'attributionURL' => t('Attribution URL'),
-    
+
     // from http://dublincore.org/documents/dces/
     'title' => t('Title'),
     'type' => t('Type'),
@@ -958,8 +948,9 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
       '#title' => t('Allow user to attach a Creative Commons license'),
       '#description' => t('User will be able to select a license while editing content.'),
       '#return_value' => 1,
-      '#default_value' => creativecommons_node_type_is_enabled($node->type),
+      '#default_value' => creativecommons_node_type_is_enabled($node->type) ? 1 : 0,
     );
+    $form['#submit'][] = 'creativecommons_node_type_submit';
   }
   elseif (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
     // Add CC license selection to node form
@@ -970,6 +961,17 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
   }
 
   return $form;
+}
+
+/**
+ * Store node type value.
+ */
+function creativecommons_node_type_submit($form, &$form_state) {
+  $node_types = variable_get('creativecommons_node_types', array());
+  $type = $form_state['values']['type'];
+
+  $node_types[$type] = !empty($form_state['values']['creativecommons']) ? $type : 0;
+  variable_set('creativecommons_node_types', $node_types);
 }
 
 /**
@@ -1120,7 +1122,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
 
   // Show metadata by default if some stored fields are set
   $show_meta = FALSE;
-  
+
   // Show metadata by default if some fields are required
   foreach ($required_metadata as $key => $value) {
     if (!empty($value)) {
@@ -1151,14 +1153,14 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
     '#collapsed' => !$show_meta,
     '#tree' => TRUE,
     );
-      
+
 
   // build metadata form fields
   foreach ($metadata_types as $key => $title) {
     $title .= ' of licensed work';
     $selected = is_array($form_state['values']['creativecommons']['metadata']) ? $form_state['values']['creativecommons']['metadata'][$key] : $node->cc->metadata[$key];
     $required = $required_metadata[$key] ? TRUE : FALSE;
-    
+
     switch ($key) {
       case 'type':
         $form['creativecommons']['metadata'][$key] = array(
@@ -1286,10 +1288,10 @@ function creativecommons_load($node) {
     $result = db_query("SELECT * FROM {creativecommons} cc WHERE cc.nid = %d", $node->nid);
     if ($row = db_fetch_object($result)) {
       $license_uri = $row->license_uri;
-      
+
       $metadata = array();
       foreach ($row as $key => $value) {
-        if ($key != 'license_uri' && $key != 'nid'){
+        if ($key != 'license_uri' && $key != 'nid') {
           $metadata[$key] = $value;
         }
       }
@@ -1306,7 +1308,9 @@ function creativecommons_load($node) {
  * false otherwise
  */
 function creativecommons_node_type_is_enabled($type) {
-  return variable_get('creativecommons_type_'. $type, 0);
+  $node_types = variable_get('creativecommons_node_types', array());
+
+  return !empty($node_types[$type]);
 }
 /**
   *  Debug code
