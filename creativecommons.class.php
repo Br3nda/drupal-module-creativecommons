@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.17 2009/07/15 11:40:47 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.18 2009/07/24 05:52:32 balleyne Exp $
 
 /**
  * @file
@@ -40,6 +40,9 @@ class creativecommons_license {
    * Initialize object
    */
   function __construct($license_uri, $metadata = array()) {
+    // Store metadata
+    $this->metadata = $metadata;
+  
     // don't load a blank license
     if (!$license_uri) {
       $this->name = 'None (All Rights Reserved)';
@@ -47,12 +50,9 @@ class creativecommons_license {
       return;
     }
 
-    $this->uri = $license_uri;
-    
     // Load license information
+    $this->uri = $license_uri;
     $this->load();
-
-    $this->metadata = $metadata;
   }
 
   /**
@@ -152,13 +152,6 @@ class creativecommons_license {
       return '"'. $this->uri .'"';
     }
   }
-  /**
-   * Set a value in the metadata array
-   */
-  function set_metadata($name, $value) {
-    if ($name && $value)
-      $this->metadata[$name] = $value;
-  }
 
 
   /**
@@ -225,7 +218,19 @@ class creativecommons_license {
   }
 
   /**
-   * Returns true if license set, false otherwise
+   * Returns true if any metadata fields are non-blank, false otherwise.
+   */
+  function has_metadata() {
+    foreach($this->metadata as $key => $value) {
+      if (!empty($value)) {
+        return TRUE;
+      }
+    }
+    
+    return FALSE;
+  }
+  /**
+   * Returns true if license set, false otherwise.
    */
   function has_license() {
     return !empty($this->uri);
@@ -334,27 +339,32 @@ class creativecommons_license {
     $rdf = "<rdf:RDF$a>\n";
 
     // metadata
+    // TODO: review
     $rdf .= "<work rdf:about=\"". $this->metadata['source'] ."\">\n";
-    if ($this->metadata) {
-      foreach ($this->metadata as $k => $v) {
-        if ($v) {
-          switch ($k) {
+    if ($this->has_metadata()) {
+      foreach ($this->metadata as $key => $value) {
+        if ($value) {
+          $ns = 'dc';
+          
+          switch ($key) {
 
-            case 'format':
-              $k = 'type';
-              if (!$v = $this->get_format_uri($v))
-                break;
+            case 'type':
+              $value = "http://purl.org/dc/dcmitype/$value";
+
             case 'source':
-              $rdf .= "<dc:$k rdf:resource=\"$v\" />\n";
+              $rdf .= "<$ns:$key rdf:resource=\"$value\" />\n";
               break;
 
             case 'rights':
             case 'creator':
-              $rdf .= "<dc:$k><agent><dc:title>$v</dc:title></agent></dc:$k>\n";
+              $rdf .= "<$ns:$key><agent><dc:title>$value</dc:title></agent></dc:$key>\n";
               break;
 
+            case 'attributionName':
+            case 'attributionURL':
+              $ns = 'cc';
             default:
-              $rdf .= "<dc:$k>$v</dc:$k>\n";
+              $rdf .= "<$ns:$key>$value</dc:$key>\n";
               break;
           }
         }
@@ -380,32 +390,32 @@ class creativecommons_license {
 
 
   /**
-   * return url for rdf that defines license format
-   */
-  function get_format_uri($format) {
-    switch (drupal_strtolower($format)) {
-      case 'audio':             return 'http://purl.org/dc/dcmitype/Sound';
-      case 'video':             return 'http://purl.org/dc/dcmitype/MovingImage';
-      case 'image':             return 'http://purl.org/dc/dcmitype/StillImage';
-      case 'text':              return 'http://purl.org/dc/dcmitype/Text';
-      case 'interactive':       return 'http://purl.org/dc/dcmitype/Interactive';
-      case 'other':             return;
-      default:                  return;
-    }
-  }
-
-
-  /**
-   * Serialize object and save to the database
+   * Save to the database.
    */
   function save($nid) {
-    //TODO: improve error handling
     if (!$nid) {
       drupal_set_message('A node must be specified to save a license', 'error');
     }
-
-    if ($nid && $this->has_license() && $this->is_available()) {
-      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri) VALUES (%d, '%s')",  $nid, $this->uri);
+    else if (!$this->is_available()) {
+      drupal_set_message('License is not available', 'error');
+    }
+    else {
+      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, title, type, description, creator, rights, date, source) ".
+        "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+          $nid,
+          $this->uri,
+          $this->metadata['attributionName'],
+          $this->metadata['attributionURL'],
+          $this->metadata['title'],
+          $this->metadata['type'],
+          $this->metadata['description'],
+          $this->metadata['creator'],
+          $this->metadata['rights'],
+          $this->metadata['date'],
+          $this->metadata['source']
+        );
+      
+      //TODO: check for error here?
       return $result;
     }
   }

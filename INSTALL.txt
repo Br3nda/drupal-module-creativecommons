@@ -15,8 +15,8 @@ Blaise Alleyne <blaise@alleyneinc.net>
 
 
 == Installation ==
-NOTE: if you installed a 6.x-dev snapshot from early July (or earlier than July),
-you may have to reinstall the module in order to get the database schema updates
+NOTE: if you installed a 6.x-dev snapshot from early July (or before that),
+you may have to uninstall the module in order to get the database schema updates
 needed to run
 
 1.  Uncompress the creativecommons.tar.gz file to your modules directory.

@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.33 2009/07/15 11:40:47 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.34 2009/07/24 05:52:32 balleyne Exp $
 
 /**
  * @file
@@ -20,13 +20,11 @@
  *
  */
 
-//TODO: review support for metadata fields (is some of this redundant in Drupal?)
 //TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
-//TODO: hook_perm for setting licenses, not just admin
+//TODO: review cc->new
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
-define('CC_JS_PATH', base_path() . CC_PATH .'/js/');
 define('CC_API_ROOT', 'http://api.creativecommons.org/rest/1.5');
 
 require_once('creativecommons.class.php');
@@ -35,7 +33,7 @@ require_once('creativecommons.class.php');
 /**
  * Enclose each arg in paragraph tags.
  */
-//TODO: is there a drupal function that can replace this?
+//TODO: is there a drupal function that can replace this? or can this be deprecated?
 function cc_para() {
   $args = func_get_args();
   $p = '';
@@ -139,10 +137,10 @@ function creativecommons_settings() {
   );
 
   //TODO: change to 'required_metadata' to be more clear
-  $form['creativecommons_license']['creativecommons_required'] = array(
+  $form['creativecommons_license']['creativecommons_required_metadata'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Required metadata fields'),
-    '#default_value' => variable_get('creativecommons_required', array()),
+    '#default_value' => variable_get('creativecommons_required_metadata', array()),
     '#options' => $metadata_types_keys,
     '#description' => t('This option allows you to require specific metadata to be included when a license is applied.'),
   );
@@ -155,7 +153,7 @@ function creativecommons_settings() {
   );
 
 
-  //TODO: reimplement
+  //TODO: reimplement with images from http://creativecommons.org/about/downloads/
   /* $form['creativecommons_display']['creativecommons_display'] = array(
     '#type' => 'radios',
     '#title' => t('Display license information'),
@@ -171,6 +169,7 @@ function creativecommons_settings() {
     '#attributes' => FALSE,
   );*/
 
+  // TODO: revisit this when ccREL is implemented
   $form['creativecommons_display']['creativecommons_rdf'] = array(
     '#type' => 'checkbox',
     '#title' => t('Insert RDF into HTML'),
@@ -301,6 +300,7 @@ function creativecommons_types_form() {
     '#value' => t('Enable Creative Commons licensing for the following content types.'),
   );
 
+  //TODO: checkboxes instead of loop
   foreach (node_get_types('names') as $type => $name) {
     $form['creativecommons_type_'. $type] = array(
       '#type' => 'checkbox',
@@ -406,7 +406,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
   /**
    * (After all this hard work,) the form element.
    */
-  $form['select_license_form'][$key] = array(
+  $form[$key] = array(
     '#type' => 'select',
     '#title' => t('Creative Commons License'),
     '#default_value' => $selected_license_uri,
@@ -750,15 +750,21 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
 /**
  * Return associative array of metadata names/descriptions
  */
+//TODO: add descriptions
 function creativecommons_get_metadata_types() {
   return array(
-    'format' => t('Format of work'),
-    'title' => t('Title of work'),
+    // from http://creativecommons.org/ns
+    'attributionName' => t('Attribution Name'),
+    'attributionURL' => t('Attribution URL'),
+    
+    // from http://dublincore.org/documents/dces/
+    'title' => t('Title'),
+    'type' => t('Type'),
     'description' => t('Description'),
-    'creator' => t('Creator\'s name'),
-    'rights' => t('<a href="http://creativecommons.org/jargon/copyright" onclick="cc_popup(\'http://creativecommons.org/jargon/copyright\');return FALSE;">Copyright</a> holder\'s name'),
-    'date' => t('<a href="http://creativecommons.org/jargon/copyright_date" onclick="cc_popup(\'http://creativecommons.org/jargon/copyright_date\');return FALSE;">Year of copyright</a>'),
-    'source' => t('<a href="http://creativecommons.org/jargon/source_work" onclick="cc_popup(\'http://creativecommons.org/jargon/source_work\');return FALSE;">Source work</a> URL')
+    'creator' => t('Creator'),
+    'rights' => t('Copyright holder'),
+    'date' => t('Year of copyright'),
+    'source' => t('Source work URL')
   );
 }
 
@@ -822,6 +828,7 @@ function creativecommons_get_questions_xml($license_id) {
 /**
  * Loop thru metadata and build form fields
  */
+//TODO: is this being used?
 function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL) {
   // loop thru metadata fields
   $fields = '';
@@ -835,16 +842,15 @@ function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL)
 
     // build metadata form fields
     switch (drupal_strtolower($m)) {
-      case 'format':
-        $formats = creativecommons_get_formats();
+      case 'type':
         $form[$prefix]['metadata'][$m] = array(
           '#type' => 'select',
           '#title' => t($d),
           '#default_value' => $sel,
-          '#options' => $formats,
+          '#options' => creativecommons_get_dcmi_types(),
           '#description' => NULL,
           '#attributes' => NULL,
-          '#required' => $req,
+          '#required' => $required,
         );
         break;
 
@@ -857,7 +863,7 @@ function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL)
           '#rows' => 5,
           '#description' => NULL,
           '#attributes' => NULL,
-          '#required' => $req,
+          '#required' => $required,
         );
         break;
 
@@ -870,7 +876,7 @@ function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL)
           '#maxlength' => 255,
           '#description' => NULL,
           '#attributes' => NULL,
-          '#required' => $req,
+          '#required' => $required,
         );
         break;
     }
@@ -880,18 +886,26 @@ return system_settings_form($form);
 
 
 /**
- * Return array of formats.
- * Uses associative array to preserve content name in form values.
+ * Return array of DCMI types,
+ * based on http://dublincore.org/documents/dcmi-type-vocabulary/
  */
-function creativecommons_get_formats() {
-  $f = array(
-    'other' => 'Other',
-    'audio' => 'Audio',
-    'video' => 'Video',
-    'image' => 'Image',
-    'text' => 'Text',
-    'interactive' => 'Interactive');
-  return $f;
+function creativecommons_get_dcmi_types() {
+  $dcmi_types = array(
+    '' => '',
+    'Collection' => 'Collection',
+    'Dataset' => 'Dataset',
+    'Event' => 'Event',
+    'Image' => 'Image',
+    'InteractiveResource' => 'Interactive Resource',
+    'MovingImage' => 'Moving Image',
+    //'PhysicalObject' => 'Physical Object',
+    'Service' => 'Service',
+    'Software' => 'Software',
+    'Sound' => 'Sound',
+    'StillImage' => 'StillImage',
+    'Text' => 'Text',
+    );
+  return $dcmi_types;
 }
 
 
@@ -980,7 +994,7 @@ function creativecommons_xml($node) {
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
   // As the function is currently deprecated, the following line neuters it
   return;
-
+//TODO: the rest
   if ($node->cc) {
     // append html
     $output = $node->cc->get_html();
@@ -1064,8 +1078,6 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
  * Form for attaching Creative Commons license to a node (not a hook)
  */
 function creativecommons_node_form($node, $form_state) {
-  //TODO: review metadata
-
   // Check user permissions and license availability
   if (!user_access('attach creative commons') || !creativecommons_get_available_license_types()) {
     return array();
@@ -1076,52 +1088,14 @@ function creativecommons_node_form($node, $form_state) {
   $form['#submit'][] = 'creativecommons_node_form_submit';
 
 
-  $cc_img = '<img src="'. CC_IMG_PATH .'/cc-choose-license.gif" alt="Creative Commons license" />';
+  //TODO: review this text (e.g. keeping copyright + CC0?)
   $cc_txt = '<p><a href="http://creativecommons.org/learn/licenses/" target="_blank">Creative Commons licenses</a> help you share your work while keeping your copyright. Other people can copy and distribute your work provided they give you credit -- and only on the conditions you specify here. This form helps you choose those conditions. Visit the Creative Commons website for an <a href="http://creativecommons.org/about/licenses/meet-the-licenses">explanation of the different licenses</a>.
 
 Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Domain license</a> or <a href="http://creativecommons.org/publicdomain/zero/1.0/">CC0</a> if you want to offer your work with no conditions.</p>';
 
-  // add javascript to <head>
-  $header = "\n  <script type=\"text/javascript\" src=\"". CC_JS_PATH ."/cc_toggle.js\"></script>";
-  drupal_set_html_head($header);
 
-  // built html output
-  $output = t($cc_txt);
-
-  //$selected = $node->cc;
-  $selected = (is_null($node->cc)) ? $node->cc->type  : $node->cc;
-  $output1 = creativecommons_select_license_form($node, 'cc_license_uri', $form_state['values']['creativecommons']['select_license_form']);
-
-
-  // if no license, then don't process the metadata
-  //  note: this loses the metadata, need to preserve it somehow... maybe load the hidden layer,
-  //  without the link to display:block, and no error handling.
-  //TODO: review
-  if (is_null($selected) || $selected == 'none') {
-    $form['creativecommons'] = array(
-      '#type' => 'fieldset',
-      '#title' => $cc_img,
-      '#prefix' => '<div class="attachments">',
-      '#suffix' => '</div>',
-      '#collapsible' => TRUE,
-      '#collapsed' => FALSE,
-      '#tree' => TRUE,
-    );
-    $form['creativecommons'][] = array('#value' => $output);
-    $form['creativecommons']['select_license_form'] = $output1['select_license_form'];
-
-    return $form;
-  }
-
-
-/// ///////////////////////////////////
-//if (!is_null($node->cc->type) && $node->cc->type != 'none')
-//  $output .= cc_para("not an empty license");
-/// //////////////////////////////////////
-
-
-// required metadata
-  $required = variable_get('creativecommons_required', array());
+  // required metadata
+  $required_metadata = variable_get('creativecommons_required_metadata', array());
 
   // loop thru metadata fields
   $fields = '';
@@ -1129,89 +1103,103 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
 
   $form['creativecommons'] = array(
     '#type' => 'fieldset',
-    '#title' => $cc_img,
+    '#title' => 'Creative Commons License',
     '#prefix' => '<div class="attachments">',
     '#suffix' => '</div>',
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
     '#tree' => TRUE,
   );
-  $form['creativecommons'][] = array('#value' => $output);
-  $form['creativecommons']['select_license_form'] = $output1['select_license_form'];
 
-  global $user;
-  $link_txt = 'Click to include more information about your work.';
-  $show_style = ($node->cc->show_meta) ? 'block' : 'none';
-  $form['creativecommons'][] = array('#value' => '<p><a onclick="cc_toggle(\'\',\'cc_optional\');return FALSE;" href="javascript:cc_toggle(\'\',\'cc_optional\');return FALSE;"><span id="moreinfo">'. $link_txt .'</span></a></p>');
-  $form['creativecommons'][] = array('#value' => '<div id="cc_optional" style="display:'. $show_style .';">');
-
-  $form['creativecommons'][] = array('#value' => cc_para("button to save default user values"));
+  $form['creativecommons'][] = array('#value' => t($cc_txt));
+  $form['creativecommons']['select_license_form'] = creativecommons_select_license_form($node, 'cc_license_uri', $form_state['values']['creativecommons']['select_license_form']);
 
 
-  foreach ($metadata_types as $m => $d) {
-    $sel = ($node->cc->metadata[$m]) ? $node->cc->metadata[$m] : '';
+  //TODO
+  //$form['creativecommons'][] = array('#value' => cc_para("button to save default user values"));
 
-    // validate data
-    //if ($required) {
-      $req = $required[$m] && $required[$m] != 0 ? TRUE : FALSE;
-      if ($req && !$sel && !$node->cc->new) {
-        form_set_error("creativecommons][cc][metadata][$m", t("Creative Commons: Please submit the $m for your content."));
-        // show metadata block if errors exist
-        $node->cc->show_meta = TRUE;
+  // Show metadata by default if some stored fields are set
+  $show_meta = FALSE;
+  
+  // Show metadata by default if some fields are required
+  foreach ($required_metadata as $key => $value) {
+    if (!empty($value)) {
+      $show_meta = TRUE;
+      break;
+    }
+  }
+
+  // Check for non-empty fields if preview mode
+  if (!$show_meta && is_array($form_state['values']['creativecommons']['metadata'])) {
+    foreach ($form_state['values']['creativecommons']['metadata'] as $key => $value) {
+      if ($value) {
+        $show_meta = TRUE;
+        break;
       }
-      // show metadata block on creation of post
-      else if ($node->cc->new)
-        $node->cc->show_meta = TRUE;
-    //}
+    }
+  }
+  // Check for stored non-empty fields if not in preview mode
+  else if ($node->cc && $node->cc->has_metadata()) {
+    $show_meta = TRUE;
+  }
 
-    // build metadata form fields
-    switch (drupal_strtolower($m)) {
-      case 'format':
-        $formats = creativecommons_get_formats();
-        // $fields .= form_select(t($d), "cc][metadata][$m", $sel, $formats, NULL, NULL, NULL, $req);
-        $form["creativecommons"]["cc"]["metadata"]["$m"] = array(
+  $form['creativecommons']['metadata'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Additional Information',
+    '#collapsible' => TRUE,
+    // show additional info by default if any metadata fields are (a) required, or (b) non-empty; otherwise, hide.
+    '#collapsed' => !$show_meta,
+    '#tree' => TRUE,
+    );
+      
+
+  // build metadata form fields
+  foreach ($metadata_types as $key => $title) {
+    $title .= ' of licensed work';
+    $selected = is_array($form_state['values']['creativecommons']['metadata']) ? $form_state['values']['creativecommons']['metadata'][$key] : $node->cc->metadata[$key];
+    $required = $required_metadata[$key] ? TRUE : FALSE;
+    
+    switch ($key) {
+      case 'type':
+        $form['creativecommons']['metadata'][$key] = array(
           '#type' => 'select',
-          '#title' => t($d),
-          '#default_value' => $sel,
-          '#options' => $formats,
+          '#title' => t($title),
+          '#default_value' => $selected,
+          '#options' => creativecommons_get_dcmi_types(),
           '#description' => NULL,
           '#extra' => NULL,
           '#multiple' => NULL,
-          '#required' => $req,
+          '#required' => $required,
         );
         break;
 
       case 'description':
-        // $fields .= form_textarea(t($d), "cc][metadata][$m", $sel, 60, 5, NULL, NULL, $req);
-        $form["creativecommons"]["cc"]["metadata"]["$m"] = array(
+        $form['creativecommons']['metadata'][$key] = array(
           '#type' => 'textarea',
-          '#title' => t($d),
-          '#default_value' => $sel,
+          '#title' => t($title),
+          '#default_value' => $selected,
           '#cols' => 60,
           '#rows' => 5,
           '#description' => NULL,
           '#attributes' => NULL,
-          '#required' => $req,
+          '#required' => $required,
         );
         break;
 
       default:
-        // $fields .= form_textfield(t($d), "cc][metadata][$m", $sel, 50, 255, NULL, NULL, $req);
-        $form["creativecommons"]["cc"]["metadata"]["$m"] = array(
+        $form['creativecommons']['metadata'][$key] = array(
           '#type' => 'textfield',
-          '#title' => t($d),
-          '#default_value' => $sel,
+          '#title' => t($title),
+          '#default_value' => $selected,
           '#size' => 50,
           '#maxlength' => 255,
           '#description' => NULL,
           '#attributes' => NULL,
-          '#required' => $req,
+          '#required' => $required,
         );
         break;
     }
   }
-
-    $form['creativecommons'][] = array('#value' => '</div>');
 
   return $form;
 }
@@ -1267,7 +1255,8 @@ return;
  */
 function creativecommons_save($node) {
 
-  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri']);
+  //TODO: shouldn't be using $_POST... what's the drupal way to do this? use submit instead?
+  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], $_POST['creativecommons']['metadata']);
   $cc->save($node->nid);
 
   //TODO: is this line necessary?
@@ -1294,13 +1283,20 @@ function creativecommons_delete($node) {
 function creativecommons_load($node) {
 
   if ($node->nid && !isset($node->cc)) {
-    $result = db_query("SELECT cc.license_uri FROM {creativecommons} cc WHERE cc.nid = %d", $node->nid);
+    $result = db_query("SELECT * FROM {creativecommons} cc WHERE cc.nid = %d", $node->nid);
     if ($row = db_fetch_object($result)) {
-      $license_uri = stripslashes($row->license_uri);
+      $license_uri = $row->license_uri;
+      
+      $metadata = array();
+      foreach ($row as $key => $value) {
+        if ($key != 'license_uri' && $key != 'nid'){
+          $metadata[$key] = $value;
+        }
+      }
     }
   }
 
-  $cc = new creativecommons_license($license_uri);
+  $cc = new creativecommons_license($license_uri, $metadata);
   return $cc;
 }
 
