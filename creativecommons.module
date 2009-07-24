@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.35 2009/07/24 07:40:58 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.36 2009/07/24 08:19:47 balleyne Exp $
 
 /**
  * @file
@@ -946,7 +946,7 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
     $form['workflow']['creativecommons'] = array(
       '#type' => 'checkbox',
       '#title' => t('Allow user to attach a Creative Commons license'),
-      '#description' => t('User will be able to select a license while editing content.'),
+      '#description' => t('Users with the <em>attach creative commons</em> permission will be able to select a license for a work of this type.'),
       '#return_value' => 1,
       '#default_value' => creativecommons_node_type_is_enabled($node->type) ? 1 : 0,
     );

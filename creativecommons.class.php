@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.19 2009/07/24 07:40:58 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.20 2009/07/24 08:19:47 balleyne Exp $
 
 /**
  * @file
@@ -221,12 +221,13 @@ class creativecommons_license {
    * Returns true if any metadata fields are non-blank, false otherwise.
    */
   function has_metadata() {
-    foreach ($this->metadata as $key => $value) {
-      if (!empty($value)) {
-        return TRUE;
+    if ($this->metadata) {
+      foreach ($this->metadata as $key => $value) {
+        if (!empty($value)) {
+          return TRUE;
+        }
       }
     }
-
     return FALSE;
   }
   /**
