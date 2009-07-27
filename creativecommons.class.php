@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.21 2009/07/27 18:01:59 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.22 2009/07/27 19:47:07 balleyne Exp $
 
 /**
  * @file
@@ -134,7 +134,7 @@ class creativecommons_license {
     }
 
 
-    // Special case: HTML TODO: is there a better way to do this?
+    // Special case: HTML TODO: is there a better way to do this? or does it matter, if we construct from scratch anyways?
     preg_match('/<html>(.*)<\/html>/', $xml, $matches);
     $this->html = $matches[1];
   }
@@ -266,13 +266,55 @@ class creativecommons_license {
   /**
    * Return html containing license link (+ images)
    */
+  //TODO: implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf)
   function get_html() {
 
     // must have a license to display html
-    if ($this->has_license())
-      return $this->html;
+    if (!$this->has_license()) {
+      return;
+    }
 
-    //TODO: review
+    $html = $this->html;
+
+    // Adjust default type in API html if user has specified a type
+    if ($this->metadata['type']) {
+      $html = str_replace('work', drupal_strtolower($this->metadata['type']), $html);
+
+      // Insert the type
+      $html = str_replace('http://purl.org/dc/dcmitype/', 'http://purl.org/dc/dcmitype/'. $this->metadata['type'], $html);
+      
+      //Remove ns definition, as we do this in the encompassing div
+      $html = str_replace(' xmlns:dc="http://purl.org/dc/elements/1.1/"', '', $html);
+
+      $this->html .= $this->metadata['type'];
+    }
+    
+    // Add attribution name, if specified
+    if ($this->metadata['attributionName']) {
+      $author = 'by ';
+      
+      if ($this->metadata['attributionURL']) {
+        $attributes = array('property' => 'cc:attributionName',
+                            'rel' => 'cc:attributionURL');
+        $author .= l($this->metadata['attributionName'], $this->metadata['attributionURL'], array('attributes' => $attributes));
+      } else {
+        $author .= '<span property="cc:attributionName">'. $this->metadata['attributionName'] .'</span>';
+      }
+      
+      $html = str_replace('is licensed', $author .' is licensed', $html);
+    }
+    
+    //TODO: about (should provide node link, for cases when not on node page)
+    $html = "\n<div about=\"\" instanceof=\"cc:Work\"".
+              "\n\txmlns:cc=\"http://creativecommons.org/ns#\"".
+              "\n\txmlns:dc=\"http://purl.org/dc/elements/1.1/\"".
+              "\n\tclass=\"creativecommons\">\n\t\t". $html ."\n</div>\n";
+    
+    return $html;
+
+
+
+    //TODO: remove when fully replaced
     /* $txt = 'This work is licensed under a '.
       l(t('Creative Commons License'),
         $this->uri,
