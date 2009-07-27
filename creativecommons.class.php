@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.20 2009/07/24 08:19:47 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.21 2009/07/27 18:01:59 balleyne Exp $
 
 /**
  * @file
@@ -272,7 +272,7 @@ class creativecommons_license {
     if ($this->has_license())
       return $this->html;
 
-
+    //TODO: review
     /* $txt = 'This work is licensed under a '.
       l(t('Creative Commons License'),
         $this->uri,
@@ -438,7 +438,7 @@ class creativecommons_license {
       }
 
       // RDF output
-      if (variable_get('creativecommons_rdf', FALSE)) {
+      if (variable_get('creativecommons_rdf', TRUE)) {
         $output .= "\n<!-- ". $this->get_rdf() ." -->\n";
       }
 

@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.36 2009/07/24 08:19:47 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.37 2009/07/27 18:01:59 balleyne Exp $
 
 /**
  * @file
@@ -20,7 +20,6 @@
  *
  */
 
-//TODO: move cc_settings_validate warning to somewhere else... needed for license selection form as well?
 //TODO: review cc->new
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
@@ -166,13 +165,13 @@ function creativecommons_settings() {
     '#attributes' => FALSE,
   );*/
 
-  // TODO: revisit this when ccREL is implemented
+  // TODO: revisit (and probably remove) this when ccREL is implemented, since RDF/XML is no longer recommended
   $form['creativecommons_display']['creativecommons_rdf'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Insert RDF into HTML'),
+    '#title' => t('Insert RDF/XML'),
     '#return_value' => 1,
     '#default_value' => variable_get('creativecommons_rdf', TRUE),
-    '#description' => t('Attach machine-readable license information within the HTML to let visitors know what license applies to your works.'),
+    '#description' => t('Attach machine-readable license information as RDF/XML within the HTML of a node to let visitors know what license applies to your works.'),
   );
   return system_settings_form($form);
 
@@ -576,8 +575,7 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
     }
   }
 
-  //Add CC0
-  //TODO: http://creativecommons.org/license/zero/partner?lang=en&partner={partner}&exit_url={exit_url}&license_code=publicdomain&stylesheet={stylesheet}
+  // CC0
   $zero = new creativecommons_license('http://creativecommons.org/publicdomain/zero/1.0/');
 
   if ($value_as_type)
@@ -658,7 +656,7 @@ function creativecommons_get_license_uri_from_available($license_type, $jurisdic
     return '';
   }
 
-  // TODO: option to search all licenses?
+  // TODO: option to search all licenses? instead of just available?
   $available_licenses = creativecommons_get_available_licenses( array('jurisdiction' => $jurisdiction) );
 
   foreach ($available_licenses as $class => $licenses) {
@@ -818,7 +816,7 @@ function creativecommons_get_questions_xml($license_id) {
 /**
  * Loop thru metadata and build form fields
  */
-//TODO: is this being used?
+//TODO: is this being used? (yes: if metadata for site license is re-enabled)
 function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL) {
   // loop thru metadata fields
   $fields = '';
@@ -917,7 +915,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
 
     case 'insert':
     case 'update':
-          //TODO: create update query somewhere instead of always deleting
+          //TODO: create update query somewhere instead of always deleting?
           creativecommons_delete($node);
           creativecommons_save($node);
       break;
@@ -986,28 +984,14 @@ function creativecommons_xml($node) {
   return;
 }
 /**
- * Append html and rdf content to node.
- *
- * TODO: this is replaced by hook_blook, which can better display human readable
- * license information, but hook_view() seems like it could be used for embedding
- * more meaningful machine readable RDF information (e.g. associating author, title
- * with content, etc.)
+ * Append rdf content to node. TODO: RDF/XML is no longer recommended by CC
  */
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
-  // As the function is currently deprecated, the following line neuters it
-  return;
-//TODO: the rest
-  if ($node->cc) {
-    // append html
-    $output = $node->cc->get_html();
-
-    // append rdf
-    if (variable_get('creativecommons_rdf', TRUE))
-      $output .= "<!-- ". $node->cc->get_rdf() ." -->";
-    if ($output) {
-      $node->content['body']['#value'] .= '<p class="creativecommons">'. $output .'</p>';
-      if ($teaser)
-        $node->content['teaser']['#value'] .= '<p class="creativecommons">'. $output .'</p>';
+  if ($node->cc && variable_get('creativecommons_rdf', TRUE)) {
+    $output = "<!-- ". $node->cc->get_rdf() ." -->";
+    $node->content['body']['#value'] .= $output;
+    if ($teaser) {
+      $node->content['teaser']['#value'] .= $output;
     }
 
     return $node;
@@ -1052,11 +1036,11 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
           $node = node_load(array('nid' => $nid));
 
           if ( $node && arg(0) == 'node' && ( $node->cc && $node->cc->is_available()) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
-            // get license information
-            $output = $node->cc->output();
+            // get license html
+            $output = $node->cc->get_html();
 
             if ($output) {
-              $block['content'] =  '<p class="creativecommons">'. $output .'</p>';
+              $block['content'] = '<p class="creativecommons">'. $output .'</p>';
             }
           }
 
@@ -1090,7 +1074,7 @@ function creativecommons_node_form($node, $form_state) {
   $form['#submit'][] = 'creativecommons_node_form_submit';
 
 
-  //TODO: review this text (e.g. keeping copyright + CC0?)
+  //TODO: review this text (e.g. does "keeping copyright" make sense given CC0?)
   $cc_txt = '<p><a href="http://creativecommons.org/learn/licenses/" target="_blank">Creative Commons licenses</a> help you share your work while keeping your copyright. Other people can copy and distribute your work provided they give you credit -- and only on the conditions you specify here. This form helps you choose those conditions. Visit the Creative Commons website for an <a href="http://creativecommons.org/about/licenses/meet-the-licenses">explanation of the different licenses</a>.
 
 Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Domain license</a> or <a href="http://creativecommons.org/publicdomain/zero/1.0/">CC0</a> if you want to offer your work with no conditions.</p>';
@@ -1117,8 +1101,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
   $form['creativecommons']['select_license_form'] = creativecommons_select_license_form($node, 'cc_license_uri', $form_state['values']['creativecommons']['select_license_form']);
 
 
-  //TODO
-  //$form['creativecommons'][] = array('#value' => cc_para("button to save default user values"));
+  //TODO: button 'save user defaults' here? or checkbox maybe (save as defaults...)?
 
   // Show metadata by default if some stored fields are set
   $show_meta = FALSE;
@@ -1261,7 +1244,7 @@ function creativecommons_save($node) {
   $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], $_POST['creativecommons']['metadata']);
   $cc->save($node->nid);
 
-  //TODO: is this line necessary?
+  //TODO: is this line necessary? should it be somewhere else?
   $node->cc = $cc;
 
   return;
