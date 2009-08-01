@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.40 2009/08/01 09:29:48 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.41 2009/08/01 09:56:11 balleyne Exp $
 
 /**
  * @file
@@ -272,11 +272,14 @@ function creativecommons_site_defaults() {
     );
 
   // Default site wide metadata values
+  /* TODO: this should be done on output, otherwise creates redundancy. What if
+  site title changes?
   $defaults = array('type' => 'InteractiveResource',
                     'attributionURL' => url('<front>', array('absolute' => TRUE)),
                     'title' => variable_get('site_name', ''),
                     'description' => variable_get('site_mission', ''),
-              );
+              ); */
+  $defaults = array();
 
   $metadata_types = creativecommons_get_metadata_types();
 
@@ -291,7 +294,7 @@ function creativecommons_site_defaults() {
           '#title' => t($title),
           '#default_value' => array_key_exists($key, $site_metadata) ? $site_metadata[$key] : $defaults[$key],
           '#options' => creativecommons_get_dcmi_types(),
-          '#description' => NULL,
+          '#description' => creativecommons_get_metadata_description($key),
           '#extra' => NULL,
           '#multiple' => NULL,
         );
@@ -304,7 +307,7 @@ function creativecommons_site_defaults() {
           '#default_value' => array_key_exists($key, $site_metadata) ? $site_metadata[$key] : $defaults[$key],
           '#cols' => 60,
           '#rows' => 5,
-          '#description' => NULL,
+          '#description' => creativecommons_get_metadata_description($key),
           '#attributes' => NULL,
         );
         break;
@@ -316,7 +319,7 @@ function creativecommons_site_defaults() {
           '#default_value' => array_key_exists($key, $site_metadata) ? $site_metadata[$key] : $defaults[$key],
           '#size' => 50,
           '#maxlength' => 255,
-          '#description' => NULL,
+          '#description' => creativecommons_get_metadata_description($key),
           '#attributes' => NULL,
         );
         break;
@@ -809,15 +812,15 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
 }
 
 /**
- * Return associative array of metadata names/descriptions
+ * Return associative array of metadata names.
  */
-//TODO: add descriptions
 //TODO: add ns to key (e.g. cc:attributionName)
 function creativecommons_get_metadata_types() {
   return array(
     // from http://creativecommons.org/ns
     'attributionName' => t('Attribution Name'),
     'attributionURL' => t('Attribution URL'),
+    'morePermissions' => t('CC+ URL'),
 
     // from http://dublincore.org/documents/dces/
     'title' => t('Title'),
@@ -830,6 +833,42 @@ function creativecommons_get_metadata_types() {
   );
 }
 
+/**
+ * Return a description of the metadata type.
+ */
+//TODO: add ns to key (e.g. cc:attributionName)
+function creativecommons_get_metadata_description($key) {
+  $descriptions = array(
+    // from http://creativecommons.org/ns
+    'attributionName' => t('The name the creator of a Work would like used when attributing re-use'),
+    'attributionURL' => t('The URL the creator of a Work would like used when attributing re-use'),
+    'morePermissions' => t('The URL where additional permissions or alternative licenses for a Work are available'),
+
+    // from http://dublincore.org/documents/dces/
+    'title' => t('A name by which the Work is formally known'),
+    'type' => t('The nature or genre of the Work'),
+    'description' => t('An account of the Work'),
+    'creator' => t('An entity primarily responsible for making the Work'),
+    'rights' => t('Information about rights held in and over the Work'),
+    'date' => t('Year of copyright'),
+    'source' => t('A related resource from which the described Work is derived'),
+  );
+
+  $links = array(
+    'attributionName' => l('cc:attributionName', 'http://creativecommons.org/ns#attributionName'),
+    'attributionURL' => l('cc:attributionURL', 'http://creativecommons.org/ns#attributionURL'),
+    'morePermissions' => l('cc:morePermissions', 'http://creativecommons.org/ns#morePermissions'),
+
+    'title' => l('dc:title', 'http://dublincore.org/documents/dces/#title'),
+    'type' => l('dc:type', 'http://dublincore.org/documents/dces/#type'),
+    'description' => l('dc:description', 'http://dublincore.org/documents/dces/#description'),
+    'creator' => l('dc:creator', 'http://dublincore.org/documents/dces/#creator'),
+    'rights' => l('dc:rights', 'http://dublincore.org/documents/dces/#rights'),
+    'date' => l('dc:date', 'http://dublincore.org/documents/dces/#date'),
+    'source' => l('dc:source', 'http://dublincore.org/documents/dces/#source'),
+  );
+  return $descriptions[$key] .' (see '. $links[$key] .').';
+}
 
 /**
  * Return array of questions for specified license
@@ -1161,7 +1200,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
           '#title' => t($title),
           '#default_value' => $selected,
           '#options' => creativecommons_get_dcmi_types(),
-          '#description' => NULL,
+          '#description' => creativecommons_get_metadata_description($key),
           '#extra' => NULL,
           '#multiple' => NULL,
           '#required' => $required,
@@ -1175,7 +1214,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
           '#default_value' => $selected,
           '#cols' => 60,
           '#rows' => 5,
-          '#description' => NULL,
+          '#description' => creativecommons_get_metadata_description($key),
           '#attributes' => NULL,
           '#required' => $required,
         );
@@ -1188,7 +1227,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
           '#default_value' => $selected,
           '#size' => 50,
           '#maxlength' => 255,
-          '#description' => NULL,
+          '#description' => creativecommons_get_metadata_description($key),
           '#attributes' => NULL,
           '#required' => $required,
         );
