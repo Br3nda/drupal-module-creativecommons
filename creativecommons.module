@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.39 2009/08/01 07:58:07 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.40 2009/08/01 09:29:48 balleyne Exp $
 
 /**
  * @file
@@ -150,7 +150,7 @@ function creativecommons_settings() {
   );
 
 
-  //TODO: reimplement with images from http://creativecommons.org/about/downloads/
+  //TODO: 2.x reimplement with images from http://creativecommons.org/about/downloads/
   /* $form['creativecommons_display']['creativecommons_display'] = array(
     '#type' => 'radios',
     '#title' => t('Display license information'),
@@ -166,7 +166,7 @@ function creativecommons_settings() {
     '#attributes' => FALSE,
   );*/
 
-  // TODO: revisit (and probably remove) this when ccREL is implemented, since RDF/XML is no longer recommended
+  // TODO: 2.x revisit (and probably remove) this when ccREL is implemented, since RDF/XML is no longer recommended
   $form['creativecommons_display']['creativecommons_rdf'] = array(
     '#type' => 'checkbox',
     '#title' => t('Insert RDF/XML'),
@@ -196,8 +196,6 @@ function creativecommons_licenses_enabled() {
 function creativecommons_site_defaults() {
   creativecommons_licenses_enabled();
 
-  $prefix = 'creativecommons_default';
-
   // Load default license
   $cc = creativecommons_get_default_license();
 
@@ -208,7 +206,7 @@ function creativecommons_site_defaults() {
     drupal_set_message($message, 'warning');
   }
 
-  $node->cc = $cc;
+  $node->cc = $cc; //TODO: necessary?
 
   $form['creativecommons_default_license'] = array(
     '#type' => 'fieldset',
@@ -240,24 +238,6 @@ function creativecommons_site_defaults() {
   );
 
 
-  // TODO: review
-  /* append metadata fields and defaults site values
-  global $base_url;
-  $defaults = array('format' => 'interactive', 'source' => $base_url);
-  foreach (array('description' => 'site_slogan', 'description' => 'site_mission',
-    'title' => 'site_name') as $mn => $vv) {
-    $gv = variable_get($vv, NULL);
-    if (!is_null($gv) && drupal_strlen($gv) > 0)
-      $defaults[$mn] = $gv;
-  }
-
-  if (!is_null($node->cc->type) && $node->cc->type != 'none') {
-    $display2 = creativecommons_build_metadata_fields($node, $prefix, $defaults);
-    $form['select_license_form']['creativecommons_site']['metadata'] = $display2['creativecommons_site']['metadata'];
-  }
-   end review */
-
-
   // site license display
   $form['creativecommons_site_license'] = array(
     '#type' => 'fieldset',
@@ -269,6 +249,80 @@ function creativecommons_site_defaults() {
     '#return_value' => 1,
     '#default_value' => variable_get('creativecommons_site_license_display', FALSE),
   );
+
+
+  // Site license metadata
+  $site_metadata = variable_get('creativecommons_site_metadata', array());
+
+  $hasmeta = FALSE;
+  foreach ($site_metadata as $key => $value) {
+    if ($value) {
+      $hasmeta = TRUE;
+    }
+  }
+
+  $form['creativecommons_site_license']['metadata'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Additional Information',
+    '#description' => 'If default license is used as site wide license, the following metadata will apply.',
+    '#collapsible' => TRUE,
+    // show additional info by default if (a) site-license enabled and (b) some metadata fields non-empty; otherwise, hide.
+    '#collapsed' => !($hasmeta && variable_get('creativecommons_site_license_display', FALSE)),
+    '#tree' => TRUE,
+    );
+
+  // Default site wide metadata values
+  $defaults = array('type' => 'InteractiveResource',
+                    'attributionURL' => url('<front>', array('absolute' => TRUE)),
+                    'title' => variable_get('site_name', ''),
+                    'description' => variable_get('site_mission', ''),
+              );
+
+  $metadata_types = creativecommons_get_metadata_types();
+
+  // build metadata form fields TODO: code is very similar to node form -- refactor?
+  foreach ($metadata_types as $key => $title) {
+    $title = 'Website '. $title;
+
+    switch ($key) {
+      case 'type':
+        $form['creativecommons_site_license']['metadata'][$key] = array(
+          '#type' => 'select',
+          '#title' => t($title),
+          '#default_value' => array_key_exists($key, $site_metadata) ? $site_metadata[$key] : $defaults[$key],
+          '#options' => creativecommons_get_dcmi_types(),
+          '#description' => NULL,
+          '#extra' => NULL,
+          '#multiple' => NULL,
+        );
+        break;
+
+      case 'description':
+        $form['creativecommons_site_license']['metadata'][$key] = array(
+          '#type' => 'textarea',
+          '#title' => t($title),
+          '#default_value' => array_key_exists($key, $site_metadata) ? $site_metadata[$key] : $defaults[$key],
+          '#cols' => 60,
+          '#rows' => 5,
+          '#description' => NULL,
+          '#attributes' => NULL,
+        );
+        break;
+
+      default:
+        $form['creativecommons_site_license']['metadata'][$key] = array(
+          '#type' => 'textfield',
+          '#title' => t($title),
+          '#default_value' => array_key_exists($key, $site_metadata) ? $site_metadata[$key] : $defaults[$key],
+          '#size' => 50,
+          '#maxlength' => 255,
+          '#description' => NULL,
+          '#attributes' => NULL,
+        );
+        break;
+    }
+  }
+
   $form['creativecommons_site_license']['creativecommons_site_license_additional_text'] = array(
     '#type' => 'textarea',
     '#title' => t('Additional text'),
@@ -280,7 +334,18 @@ function creativecommons_site_defaults() {
     '#required' => NULL,
   );
 
+  $form['#submit'][] = 'creativecommons_site_defaults_submit';
   return system_settings_form($form);
+}
+
+/**
+ * Submit function for site_defaults form. Stores metadata as array.
+ */
+function creativecommons_site_defaults_submit($form, &$form_state) {
+  if ($form_state['values']['metadata']) {
+    variable_set('creativecommons_site_metadata', $form_state['values']['metadata']);
+    unset($form_state['values']['metadata']);
+  }
 }
 
 /**
@@ -434,6 +499,13 @@ function creativecommons_get_default_license() {
   return new creativecommons_license($license_uri);
 }
 
+/**
+ * Return site license, including metadata.
+ */
+function creativecommons_get_site_license() {
+  $license_uri = creativecommons_get_default_license_uri();
+  return new creativecommons_license($license_uri, NULL, variable_get('creativecommons_site_metadata', array()));
+}
 /**
  * Return default license URI.
  */
@@ -754,7 +826,7 @@ function creativecommons_get_metadata_types() {
     'creator' => t('Creator'),
     'rights' => t('Copyright holder'),
     'date' => t('Year of copyright'),
-    'source' => t('Source work URL')
+    'source' => t('Source work URL'),
   );
 }
 
@@ -814,66 +886,6 @@ function creativecommons_get_questions_xml($license_id) {
   }
   return;
 }
-
-/**
- * Loop thru metadata and build form fields
- */
-//TODO: is this being used? (yes: if metadata for site license is re-enabled)
-function creativecommons_build_metadata_fields($node, $prefix, $defaults = NULL) {
-  // loop thru metadata fields
-  $fields = '';
-  $metadata_types = creativecommons_get_metadata_types();
-  foreach ($metadata_types as $m => $d) {
-    $sel = ($node->cc->metadata[$m]) ? $node->cc->metadata[$m] : '';
-    if (is_array($defaults) && array_key_exists($m, $defaults)) {
-      if (is_null($sel))
-        $sel = $defaults[$m];
-    }
-
-    // build metadata form fields
-    switch (drupal_strtolower($m)) {
-      case 'type':
-        $form[$prefix]['metadata'][$m] = array(
-          '#type' => 'select',
-          '#title' => t($d),
-          '#default_value' => $sel,
-          '#options' => creativecommons_get_dcmi_types(),
-          '#description' => NULL,
-          '#attributes' => NULL,
-          '#required' => $required,
-        );
-        break;
-
-      case 'description':
-        $form[$prefix]['metadata'][$m] = array(
-          '#type' => 'textarea',
-          '#title' => t($d),
-          '#default_value' => $sel,
-          '#cols' => 60,
-          '#rows' => 5,
-          '#description' => NULL,
-          '#attributes' => NULL,
-          '#required' => $required,
-        );
-        break;
-
-      default:
-        $form[$prefix]['metadata'][$m] = array(
-          '#type' => 'textfield',
-          '#title' => t($d),
-          '#default_value' => $sel,
-          '#size' => 50,
-          '#maxlength' => 255,
-          '#description' => NULL,
-          '#attributes' => NULL,
-          '#required' => $required,
-        );
-        break;
-    }
-  }
-return system_settings_form($form);
-}
-
 
 /**
  * Return array of DCMI types,
@@ -1047,7 +1059,7 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
           // Site license
           case 1:
             if (variable_get('creativecommons_site_license_display', FALSE)) {
-              $cc = creativecommons_get_default_license();
+              $cc = creativecommons_get_site_license();
               if ($cc->is_available()) {
                 $block['content'] =  $cc->output(variable_get('creativecommons_site_license_additional_text', ''));
                 $block['subject'] = 'Site License';
