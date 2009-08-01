@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.7 2009/07/27 18:01:59 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.8 2009/08/01 10:17:12 balleyne Exp $
 
 /**
  * @file
@@ -34,6 +34,12 @@ function creativecommons_schema() {
       ),
       'attributionURL' => array(
         'description' => t('The URL the creator of a Work would like used when attributing re-use.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'morePermissions' => array(
+        'description' => t('The URL where additional permissions or alternative licenses for a Work are available.'),
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
@@ -134,6 +140,15 @@ function creativecommons_update_1() {
   db_add_field($ret, 'creativecommons', 'rights', array('type' => 'varchar', 'length' => 255, 'default' => '', 'not null' => TRUE));
   db_add_field($ret, 'creativecommons', 'date', array('type' => 'varchar', 'length' => 255, 'default' => '', 'not null' => TRUE));
   db_add_field($ret, 'creativecommons', 'source', array('type' => 'varchar', 'length' => 255, 'default' => '', 'not null' => TRUE));
+
+  return $ret;
+}
+
+// Add cc:morePermissions
+function creativecommons_update_2() {
+  $ret = array();
+
+  db_add_field($ret, 'creativecommons', 'morePermissions', array('type' => 'varchar', 'length' => 255, 'default' => '', 'not null' => TRUE));
 
   return $ret;
 }

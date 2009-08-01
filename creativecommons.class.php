@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.23 2009/08/01 07:58:07 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.24 2009/08/01 10:17:12 balleyne Exp $
 
 /**
  * @file
@@ -364,7 +364,11 @@ class creativecommons_license {
       $html = str_replace($marker_text, $author .' '. $marker_text, $html);
     }
 
-    // TODO: add cc:morePermissions here
+    // Alternative licensing options cc:morePermissions
+    if ($this->metadata['morePermissions']) {
+      $attributes = array('rel' => 'cc:morePermissions');
+      $html .= ' There are '. l(t('alternative licensing options'), $this->metadata['morePermissions'], array('attributes' => $attributes)) .'.';
+    }
 
     $html = "\n<div about=\"". url('node/'. $this->nid, array('absolute' => TRUE)) ."\" instanceof=\"cc:Work\"".
               "\n\txmlns:cc=\"http://creativecommons.org/ns#\"".
@@ -507,12 +511,13 @@ class creativecommons_license {
       drupal_set_message('License is not available', 'error');
     }
     else {
-      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, title, type, description, creator, rights, date, source) ".
-        "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, morePermissions, title, type, description, creator, rights, date, source) ".
+        "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
           $nid,
           $this->uri,
           $this->metadata['attributionName'],
           $this->metadata['attributionURL'],
+          $this->metadata['morePermissions'],
           $this->metadata['title'],
           $this->metadata['type'],
           $this->metadata['description'],

@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.41 2009/08/01 09:56:11 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.42 2009/08/01 10:17:12 balleyne Exp $
 
 /**
  * @file
@@ -820,7 +820,7 @@ function creativecommons_get_metadata_types() {
     // from http://creativecommons.org/ns
     'attributionName' => t('Attribution Name'),
     'attributionURL' => t('Attribution URL'),
-    'morePermissions' => t('CC+ URL'),
+    'morePermissions' => l('CC+', 'http://wiki.creativecommons.org/CCPlus') .' '. t('URL'),
 
     // from http://dublincore.org/documents/dces/
     'title' => t('Title'),
@@ -968,7 +968,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
 
     case 'insert':
     case 'update':
-          //TODO: create update query somewhere instead of always deleting?
+          //TODO: create update query somewhere instead of always deleting -- otherwise license information is lost on failed save
           creativecommons_delete($node);
           creativecommons_save($node);
       break;
