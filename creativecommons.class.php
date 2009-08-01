@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.22 2009/07/27 19:47:07 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.23 2009/08/01 07:58:07 balleyne Exp $
 
 /**
  * @file
@@ -39,26 +39,56 @@ class creativecommons_license {
   /**
    * Initialize object
    */
-  function __construct($license_uri, $metadata = array()) {
-    // Store metadata
-    $this->metadata = $metadata;
+  function __construct($license_uri, $nid = NULL, $metadata = array()) {
+    // If nid set, load from databases
+    if ($nid) {
+      $this->nid = $nid;
+      $this->load();
+    }
+    // Otherwise, load from parameters
+    else {
+      $this->uri = $license_uri;
 
-    // don't load a blank license
-    if (!$license_uri) {
-      $this->name = 'None (All Rights Reserved)';
-      $this->type = '';
-      return;
+      if ($metadata) {
+        $this->metadata = $metadata;
+      }
     }
 
-    // Load license information
-    $this->uri = $license_uri;
-    $this->load();
+    // Fetch license information if uri present
+    if ($this->uri) {
+      $this->fetch();
+    }
+    // don't fetch a blank license
+    else {
+      $this->name = 'None (All Rights Reserved)';
+      $this->type = '';
+    }
+  }
+
+
+  /**
+   * Load from database into object.
+   */
+  function load() {
+    if ($this->nid) {
+      $result = db_query("SELECT * FROM {creativecommons} cc WHERE cc.nid = %d", $this->nid);
+      if ($row = db_fetch_object($result)) {
+        $this->uri = $row->license_uri;
+
+        $this->metadata = array();
+        foreach ($row as $key => $value) {
+          if ($key != 'license_uri' && $key != 'nid') {
+            $this->metadata[$key] = $value;
+          }
+        }
+      }
+    }
   }
 
   /**
    * Load basic information from uri and XML data from API into object.
    */
-  function load() {
+  function fetch() {
     // Load basic data from uri
     $uri_parts = explode('/', $this->uri);
     $this->type = $uri_parts[4];
@@ -74,7 +104,7 @@ class creativecommons_license {
       $this->license_class = 'publicdomain';
 
       $this->html = '<p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">
-        <a rel="license" href="'. $this->uri .'" style="text-decoration:none;">
+        <a rel="license" href="'. check_plain($this->uri) .'" style="text-decoration:none;">
           <img src="http://i.creativecommons.org/l/zero/1.0/88x31.png" border="0" alt="CC0" />
         </a>
         <br />
@@ -124,6 +154,7 @@ class creativecommons_license {
           }
           break;
 
+        //TODO: remove when RDF/XML support is dropped, this creates redundancy
         case 'permits':
         case 'prohibits':
         case 'requires':
@@ -137,6 +168,25 @@ class creativecommons_license {
     // Special case: HTML TODO: is there a better way to do this? or does it matter, if we construct from scratch anyways?
     preg_match('/<html>(.*)<\/html>/', $xml, $matches);
     $this->html = $matches[1];
+  }
+
+  /**
+   * Sanitize values and check keys. If key is valid metadata
+   * type, sanitize the value. Otherwise, unset it. After running this function,
+   * all metadata should be safe for output in HTML.
+   */
+  function check_metadata() {
+    if ($this->metadata) {
+      $metadata_types = creativecommons_get_metadata_types();
+      foreach ($this->metadata as $key => $value) {
+        if (array_key_exists($key, $metadata_types)) {
+          $this->metadata[$key] = check_plain($value);
+        }
+        else {
+          unset($this->metadata[$key]);
+        }
+      }
+    }
   }
 
   /**
@@ -266,7 +316,7 @@ class creativecommons_license {
   /**
    * Return html containing license link (+ images)
    */
-  //TODO: implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf)
+  //TODO: implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf), with Drupal defaults
   function get_html() {
 
     // must have a license to display html
@@ -274,42 +324,53 @@ class creativecommons_license {
       return;
     }
 
+    // Sanitize metadata
+    $this->check_metadata();
+
     $html = $this->html;
+
+    $marker_text = $this->type == 'zero' ? 'have been waived' : 'is licensed';
 
     // Adjust default type in API html if user has specified a type
     if ($this->metadata['type']) {
-      $html = str_replace('work', drupal_strtolower($this->metadata['type']), $html);
+      $dcmi_types = creativecommons_get_dcmi_types();
+      $html = str_replace('work', drupal_strtolower($dcmi_types[$this->metadata['type']]), $html);
 
       // Insert the type
       $html = str_replace('http://purl.org/dc/dcmitype/', 'http://purl.org/dc/dcmitype/'. $this->metadata['type'], $html);
-      
+
       //Remove ns definition, as we do this in the encompassing div
       $html = str_replace(' xmlns:dc="http://purl.org/dc/elements/1.1/"', '', $html);
-
-      $this->html .= $this->metadata['type'];
     }
-    
+
+    // Add title of work, if specified
+    if ($this->metadata['title']) {
+      $html = str_replace(' '. $marker_text, ', <span property="dc:title">'. $this->metadata['title'] .'</span>, '. $marker_text, $html);
+    }
+
     // Add attribution name, if specified
     if ($this->metadata['attributionName']) {
       $author = 'by ';
-      
+
       if ($this->metadata['attributionURL']) {
         $attributes = array('property' => 'cc:attributionName',
                             'rel' => 'cc:attributionURL');
         $author .= l($this->metadata['attributionName'], $this->metadata['attributionURL'], array('attributes' => $attributes));
-      } else {
+      }
+      else {
         $author .= '<span property="cc:attributionName">'. $this->metadata['attributionName'] .'</span>';
       }
-      
-      $html = str_replace('is licensed', $author .' is licensed', $html);
+
+      $html = str_replace($marker_text, $author .' '. $marker_text, $html);
     }
-    
-    //TODO: about (should provide node link, for cases when not on node page)
-    $html = "\n<div about=\"\" instanceof=\"cc:Work\"".
+
+    // TODO: add cc:morePermissions here
+
+    $html = "\n<div about=\"". url('node/'. $this->nid, array('absolute' => TRUE)) ."\" instanceof=\"cc:Work\"".
               "\n\txmlns:cc=\"http://creativecommons.org/ns#\"".
               "\n\txmlns:dc=\"http://purl.org/dc/elements/1.1/\"".
               "\n\tclass=\"creativecommons\">\n\t\t". $html ."\n</div>\n";
-    
+
     return $html;
 
 
@@ -374,6 +435,9 @@ class creativecommons_license {
     // must have a license to display rdf
     if (!$this->has_license())
       return;
+
+    // Sanitize metadata
+    $this->check_metadata();
 
     if ($this->rdf) {
       foreach ($this->rdf['attributes'] as $attr => $val)

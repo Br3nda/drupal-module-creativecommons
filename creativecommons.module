@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.38 2009/07/27 19:47:07 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.39 2009/08/01 07:58:07 balleyne Exp $
 
 /**
  * @file
@@ -21,6 +21,7 @@
  */
 
 //TODO: review cc->new
+//TODO: review link output to ensure l() used when necessary http://api.drupal.org/api/function/l/6
 
 define('CC_PATH', drupal_get_path('module', 'creativecommons'));
 define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
@@ -739,6 +740,7 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
  * Return associative array of metadata names/descriptions
  */
 //TODO: add descriptions
+//TODO: add ns to key (e.g. cc:attributionName)
 function creativecommons_get_metadata_types() {
   return array(
     // from http://creativecommons.org/ns
@@ -890,7 +892,7 @@ function creativecommons_get_dcmi_types() {
     'Service' => 'Service',
     'Software' => 'Software',
     'Sound' => 'Sound',
-    'StillImage' => 'StillImage',
+    'StillImage' => 'Still Image',
     'Text' => 'Text',
     );
   return $dcmi_types;
@@ -906,7 +908,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
     // settings   'form post replaced by form_api
     case 'load':
       if (creativecommons_node_type_is_enabled($node->type))
-        $node->cc = creativecommons_load($node);
+        $node->cc = new creativecommons_license('', $node->nid);
       break;
 
     case 'view':
@@ -1237,7 +1239,7 @@ return;
 function creativecommons_save($node) {
 
   //TODO: shouldn't be using $_POST... what's the drupal way to do this? use submit instead?
-  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], $_POST['creativecommons']['metadata']);
+  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], NULL, $_POST['creativecommons']['metadata']);
   $cc->save($node->nid);
 
   //TODO: is this line necessary? should it be somewhere else?
@@ -1254,31 +1256,6 @@ function creativecommons_delete($node) {
     db_query("DELETE FROM {creativecommons} WHERE nid = %d", $node->nid);
   }
   return;
-}
-
-
-/**
-  * Load the license for a specified node. If no license found, return empty
-  * license object.
-  */
-function creativecommons_load($node) {
-
-  if ($node->nid && !isset($node->cc)) {
-    $result = db_query("SELECT * FROM {creativecommons} cc WHERE cc.nid = %d", $node->nid);
-    if ($row = db_fetch_object($result)) {
-      $license_uri = $row->license_uri;
-
-      $metadata = array();
-      foreach ($row as $key => $value) {
-        if ($key != 'license_uri' && $key != 'nid') {
-          $metadata[$key] = $value;
-        }
-      }
-    }
-  }
-
-  $cc = new creativecommons_license($license_uri, $metadata);
-  return $cc;
 }
 
 
