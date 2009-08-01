@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.42 2009/08/01 10:17:12 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.43 2009/08/01 11:02:55 balleyne Exp $
 
 /**
  * @file
@@ -272,7 +272,7 @@ function creativecommons_site_defaults() {
     );
 
   // Default site wide metadata values
-  /* TODO: this should be done on output, otherwise creates redundancy. What if
+  /* TODO: 2.x this should be done on output, otherwise creates redundancy. What if
   site title changes?
   $defaults = array('type' => 'InteractiveResource',
                     'attributionURL' => url('<front>', array('absolute' => TRUE)),
@@ -814,7 +814,7 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
 /**
  * Return associative array of metadata names.
  */
-//TODO: add ns to key (e.g. cc:attributionName)
+//TODO: 2.x add ns to key (e.g. cc:attributionName)
 function creativecommons_get_metadata_types() {
   return array(
     // from http://creativecommons.org/ns
@@ -836,7 +836,7 @@ function creativecommons_get_metadata_types() {
 /**
  * Return a description of the metadata type.
  */
-//TODO: add ns to key (e.g. cc:attributionName)
+//TODO: 2.x add ns to key (e.g. cc:attributionName)
 function creativecommons_get_metadata_description($key) {
   $descriptions = array(
     // from http://creativecommons.org/ns
@@ -968,9 +968,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
 
     case 'insert':
     case 'update':
-          //TODO: create update query somewhere instead of always deleting -- otherwise license information is lost on failed save
-          creativecommons_delete($node);
-          creativecommons_save($node);
+      creativecommons_save($node, $op);
       break;
 
     case 'delete':
@@ -1037,7 +1035,7 @@ function creativecommons_xml($node) {
   return;
 }
 /**
- * Append rdf content to node. TODO: RDF/XML is no longer recommended by CC
+ * Append rdf content to node. TODO: 2.x RDF/XML is no longer recommended by CC
  */
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
   if ($node->cc && variable_get('creativecommons_rdf', TRUE)) {
@@ -1150,7 +1148,7 @@ Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Do
   $form['creativecommons']['select_license_form'] = creativecommons_select_license_form($node, 'cc_license_uri', $form_state['values']['creativecommons']['select_license_form']);
 
 
-  //TODO: button 'save user defaults' here? or checkbox maybe (save as defaults...)?
+  //TODO: 2.x button 'save user defaults' here? or checkbox maybe (save as defaults...)?
 
   // Show metadata by default if some stored fields are set
   $show_meta = FALSE;
@@ -1287,11 +1285,11 @@ return;
 /**
  * Save license/node relationship in database
  */
-function creativecommons_save($node) {
+function creativecommons_save($node, $op) {
 
   //TODO: shouldn't be using $_POST... what's the drupal way to do this? use submit instead?
   $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], NULL, $_POST['creativecommons']['metadata']);
-  $cc->save($node->nid);
+  $cc->save($node->nid, $op);
 
   //TODO: is this line necessary? should it be somewhere else?
   $node->cc = $cc;
@@ -1319,6 +1317,8 @@ function creativecommons_node_type_is_enabled($type) {
 
   return !empty($node_types[$type]);
 }
+
+//TODO: remove?
 /**
   *  Debug code
   */

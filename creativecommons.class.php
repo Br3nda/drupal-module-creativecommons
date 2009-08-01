@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.24 2009/08/01 10:17:12 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.25 2009/08/01 11:02:55 balleyne Exp $
 
 /**
  * @file
@@ -20,9 +20,9 @@
  *
  */
 
-//TODO: PHP5
+//TODO: 2.x PHP5
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
-//TODO: optimize by storing values when functions are called (e.g. is_valid, is_available)?
+//TODO: 2.x optimize by storing values when functions are called (e.g. is_valid, is_available)?
 class creativecommons_license {
   // license attributes
   var $uri;
@@ -154,7 +154,7 @@ class creativecommons_license {
           }
           break;
 
-        //TODO: remove when RDF/XML support is dropped, this creates redundancy
+        //TODO: 2.x remove when RDF/XML support is dropped, this creates redundancy, violates DRY
         case 'permits':
         case 'prohibits':
         case 'requires':
@@ -165,7 +165,7 @@ class creativecommons_license {
     }
 
 
-    // Special case: HTML TODO: is there a better way to do this? or does it matter, if we construct from scratch anyways?
+    // Special case: HTML TODO: 2.x is there a better way to do this? or does it matter, if it'll be constructed from scratch eventually anyways?
     preg_match('/<html>(.*)<\/html>/', $xml, $matches);
     $this->html = $matches[1];
   }
@@ -316,7 +316,7 @@ class creativecommons_license {
   /**
    * Return html containing license link (+ images)
    */
-  //TODO: implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf), with Drupal defaults
+  //TODO: 2.x implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf), with Drupal defaults
   function get_html() {
 
     // must have a license to display html
@@ -379,7 +379,7 @@ class creativecommons_license {
 
 
 
-    //TODO: remove when fully replaced
+    //TODO: remove when fully replaced -- need to review date output, etc
     /* $txt = 'This work is licensed under a '.
       l(t('Creative Commons License'),
         $this->uri,
@@ -450,15 +450,13 @@ class creativecommons_license {
     $rdf = "<rdf:RDF$a>\n";
 
     // metadata
-    // TODO: review
-    $rdf .= "<work rdf:about=\"". $this->metadata['source'] ."\">\n";
+    $rdf .= "<work rdf:about=\"". url('node/'. $this->nid, array('absolute' => TRUE)) ."\">\n";
     if ($this->has_metadata()) {
       foreach ($this->metadata as $key => $value) {
         if ($value) {
           $ns = 'dc';
 
           switch ($key) {
-
             case 'type':
               $value = "http://purl.org/dc/dcmitype/$value";
 
@@ -468,14 +466,15 @@ class creativecommons_license {
 
             case 'rights':
             case 'creator':
-              $rdf .= "<$ns:$key><agent><dc:title>$value</dc:title></agent></dc:$key>\n";
+              $rdf .= "<$ns:$key><agent><dc:title>$value</dc:title></agent></$ns:$key>\n";
               break;
 
             case 'attributionName':
             case 'attributionURL':
+            case 'morePermissions':
               $ns = 'cc';
             default:
-              $rdf .= "<$ns:$key>$value</dc:$key>\n";
+              $rdf .= "<$ns:$key>$value</$ns:$key>\n";
               break;
           }
         }
@@ -502,8 +501,10 @@ class creativecommons_license {
 
   /**
    * Save to the database.
+   * @param $nid - node id
+   * @param $op - either 'insert' or 'update'
    */
-  function save($nid) {
+  function save($nid, $op) {
     if (!$nid) {
       drupal_set_message('A node must be specified to save a license', 'error');
     }
@@ -511,22 +512,42 @@ class creativecommons_license {
       drupal_set_message('License is not available', 'error');
     }
     else {
-      $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, morePermissions, title, type, description, creator, rights, date, source) ".
-        "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-          $nid,
-          $this->uri,
-          $this->metadata['attributionName'],
-          $this->metadata['attributionURL'],
-          $this->metadata['morePermissions'],
-          $this->metadata['title'],
-          $this->metadata['type'],
-          $this->metadata['description'],
-          $this->metadata['creator'],
-          $this->metadata['rights'],
-          $this->metadata['date'],
-          $this->metadata['source']
-        );
-
+      switch ($op) {
+        case 'insert':
+          $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, morePermissions, title, type, description, creator, rights, date, source) ".
+            "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+              $nid,
+              $this->uri,
+              $this->metadata['attributionName'],
+              $this->metadata['attributionURL'],
+              $this->metadata['morePermissions'],
+              $this->metadata['title'],
+              $this->metadata['type'],
+              $this->metadata['description'],
+              $this->metadata['creator'],
+              $this->metadata['rights'],
+              $this->metadata['date'],
+              $this->metadata['source']
+            );
+            break;
+          case 'update':
+            $result = db_query("UPDATE {creativecommons} SET license_uri='%s', attributionName='%s', attributionURL='%s', morePermissions='%s', ".
+                              "title='%s', type='%s', description='%s', creator='%s', rights='%s', date='%s', source='%s' WHERE nid=%d",
+              $this->uri,
+              $this->metadata['attributionName'],
+              $this->metadata['attributionURL'],
+              $this->metadata['morePermissions'],
+              $this->metadata['title'],
+              $this->metadata['type'],
+              $this->metadata['description'],
+              $this->metadata['creator'],
+              $this->metadata['rights'],
+              $this->metadata['date'],
+              $this->metadata['source'],
+              $nid
+            );
+            break;
+      }
       //TODO: check for error here?
       return $result;
     }
