@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.25 2009/08/01 11:02:55 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.26 2009/08/05 05:03:39 balleyne Exp $
 
 /**
  * @file
@@ -328,6 +328,20 @@ class creativecommons_license {
     $this->check_metadata();
 
     $html = $this->html;
+
+    // Adjust image, if necessary
+    switch (variable_get('creativecommons_icon_style', '88x31')) {
+      case '':
+        // Strip icon
+        $html = preg_replace('/<a.*<img.*br\/>/', '', $html);
+        break;
+      case '80x15':
+        $html = str_replace('88x31.png', '80x15.png', $html);
+        break;
+      case '88x31':
+        //do nothing -- API default
+        break;
+    }
 
     $marker_text = $this->type == 'zero' ? 'have been waived' : 'is licensed';
 

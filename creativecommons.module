@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.44 2009/08/05 04:17:21 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.45 2009/08/05 05:03:39 balleyne Exp $
 
 /**
  * @file
@@ -154,6 +154,19 @@ function creativecommons_settings() {
 
 
   //TODO: 2.x reimplement with images from http://creativecommons.org/about/downloads/
+  $license_icons = array(
+    '88x31' => '<img alt="'. t('Large (88x31)') .'" title="'. t('Large (88x31)') .'" src="http://i.creativecommons.org/l/by-sa/3.0/88x31.png" />',
+    '80x15' => '<img alt="'. t('Small (80x15)') .'" title="'. t('Small (80x15)') .'" src="http://i.creativecommons.org/l/by-sa/3.0/80x15.png" />',
+    '' => t('No icon'),
+  );
+
+  $form['creativecommons_display']['creativecommons_icon_style'] = array(
+    '#type' => 'radios',
+    '#title' => t('License icon style'),
+    '#options' => $license_icons,
+    '#default_value' => variable_get('creativecommons_icon_style', '88x31'),
+  );
+
   /* $form['creativecommons_display']['creativecommons_display'] = array(
     '#type' => 'radios',
     '#title' => t('Display license information'),
