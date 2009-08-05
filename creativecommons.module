@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.43 2009/08/01 11:02:55 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.44 2009/08/05 04:17:21 balleyne Exp $
 
 /**
  * @file
@@ -99,6 +99,8 @@ function creativecommons_help($path, $arg) {
   $cc_desc = 'A Creative Commons license helps you publish your work online while letting others know exactly what they can and can\'t do with your work. Creative Commons offers a flexible range of protections and freedoms for authors and artists, built upon the "all rights reserved" concept of traditional copyright to create a voluntary "some rights reserved" copyright.';
   $cc_desc_short = 'Assign a Creative Commons license to content that appears on the site.';
   $cc_node = 'Attaching a Creative Commons license to a node within Drupal can designate the content of that node, as well as any attached files, as available under that license.';
+
+  //TODO: use l()
   $cc_url = 'For more information, visit <a href="http://creativecommons.org/learnmore">http://creativecommons.org/learnmore</a>.';
 
   switch ($path) {
@@ -119,6 +121,7 @@ function creativecommons_settings() {
   $license_array_keys = creativecommons_get_licenses(array('jurisdiction' => variable_get('creativecommons_default_jurisdiction', '')), TRUE);
   $metadata_types_keys = creativecommons_get_metadata_types();
 
+  $form['#submit'][] = 'creativecommons_settings_check_license_types_in_use';
   $form['creativecommons_license'] = array(
     '#type' => 'fieldset',
     '#title' => t('License selection'),
@@ -176,6 +179,21 @@ function creativecommons_settings() {
   );
   return system_settings_form($form);
 
+}
+
+function creativecommons_settings_check_license_types_in_use($form, &$form_state) {
+  $prev = creativecommons_get_available_license_types();
+  $curr = $form_state['values']['creativecommons_available_license_types'];
+  foreach ($prev as $type) {
+    if (!in_array($type, $curr)) {
+      $count = creativecommons_count_by_license_type($type);
+      if ($count > 0) {
+        $name = creativecommons_get_license_type_name($type);
+        $message = "There ". ($count > 1 ? 'are' : 'is') ." $count node". ($count > 1 ? 's' : '') ." currently using the $name license. Licensing information will be hidden when viewing these nodes until adjusted.";
+        drupal_set_message($message, 'warning', FALSE);
+      }
+    }
+  }
 }
 
 /**
@@ -556,8 +574,9 @@ function creativecommons_generic_license_name($full_name) {
   return $name;
 }
 
-
-//TODO: this method is not in use -- questions seem more reliable
+/**
+ * Return list of jurisdictions from CC API.
+ */
 function creativecommons_get_jurisdictions() {
   $uri = '/support/jurisdictions';
   $xml = '<jurisdictions>'. creativecommons_return_xml($uri) .'</jurisdictions>';
@@ -668,6 +687,19 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
  */
 function creativecommons_get_available_license_types() {
   return variable_get('creativecommons_available_license_types', array());
+}
+
+/**
+ * Return name of license
+ * @param $type
+ */
+function creativecommons_get_license_type_name($type) {
+  $license_array = creativecommons_get_licenses(NULL, TRUE);
+  foreach ($license_array as $licenses) {
+    if (is_array($licenses) && array_key_exists($type, $licenses)) {
+      return $licenses[$type];
+    }
+  }
 }
 
 /**
@@ -1034,6 +1066,7 @@ function creativecommons_xml($node) {
   }
   return;
 }
+
 /**
  * Append rdf content to node. TODO: 2.x RDF/XML is no longer recommended by CC
  */
@@ -1118,10 +1151,9 @@ function creativecommons_node_form($node, $form_state) {
 
   // Add validate and submit functions
   $form['#validate'][] = 'creativecommons_node_form_validate';
-  $form['#submit'][] = 'creativecommons_node_form_submit';
-
 
   //TODO: review this text (e.g. does "keeping copyright" make sense given CC0?)
+  //TODO: l()
   $cc_txt = '<p><a href="http://creativecommons.org/learn/licenses/" target="_blank">Creative Commons licenses</a> help you share your work while keeping your copyright. Other people can copy and distribute your work provided they give you credit -- and only on the conditions you specify here. This form helps you choose those conditions. Visit the Creative Commons website for an <a href="http://creativecommons.org/about/licenses/meet-the-licenses">explanation of the different licenses</a>.
 
 Choose the <a href="http://creativecommons.org/licenses/publicdomain/">Public Domain license</a> or <a href="http://creativecommons.org/publicdomain/zero/1.0/">CC0</a> if you want to offer your work with no conditions.</p>';
@@ -1255,34 +1287,6 @@ function creativecommons_node_form_validate($form, &$form_state) {
 }
 
 /**
- * Submit the Creative Commons node form.
- */
-function creativecommons_node_form_submit($form, &$form_state) {
-//TODO: what is this needed for?
-return;
-
-  //Same as creativecommons_save
-    if (is_array($_POST['creativecommons']['select_license_form']) ) {
-      foreach ($_POST['creativecommons']['select_license_form'] as $key => $val ) {
-        $_POST[$key] = $val;
-      }
-    }
-
-    if (is_array($_POST['creativecommons']['cc']) ) {
-      foreach ($_POST['creativecommons']['cc'] as $key => $val ) {
-        $_POST['cc'][$key] = $val;
-      }
-    }
-
-    $cc = new creativecommons_license($_POST['cc_license_uri']);
-
-    //TODO: hook_validate() for this check
-    if ($cc && $cc->is_available())
-      $node->cc = $cc;
-
-}
-
-/**
  * Save license/node relationship in database
  */
 function creativecommons_save($node, $op) {
@@ -1317,6 +1321,21 @@ function creativecommons_node_type_is_enabled($type) {
 
   return !empty($node_types[$type]);
 }
+
+/**
+ * Find out how many nodes are using a given license type.
+ *
+ * @param $type -- license type to search for
+ * @return the number of nodes licensed under the given type.
+ */
+function creativecommons_count_by_license_type($type) {
+  $result = db_query("SELECT COUNT(*) as count FROM {creativecommons} WHERE license_uri LIKE '". ($type == 'zero' ? 'http://creativecommons.org/publicdomain/zero/%' : 'http://creativecommons.org/licenses/%s/%') ."'", $type);
+  if ($result) {
+    $row = db_fetch_object($result);
+    return $row->count;
+  }
+}
+
 
 //TODO: remove?
 /**
