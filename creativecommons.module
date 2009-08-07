@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.45 2009/08/05 05:03:39 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.46 2009/08/07 09:45:06 balleyne Exp $
 
 /**
  * @file
@@ -23,8 +23,6 @@
 //TODO: review cc->new
 //TODO: review link output to ensure l() used when necessary http://api.drupal.org/api/function/l/6
 
-define('CC_PATH', drupal_get_path('module', 'creativecommons'));
-define('CC_IMG_PATH', base_path() . CC_PATH .'/images/');
 define('CC_API_ROOT', 'http://api.creativecommons.org/rest/1.5');
 
 require_once('creativecommons.class.php');
@@ -152,19 +150,23 @@ function creativecommons_settings() {
     '#title' => t('Node display'),
   );
 
+  //TODO: add license name option (full_text, generic_text, short_text)
 
-  //TODO: 2.x reimplement with images from http://creativecommons.org/about/downloads/
-  $license_icons = array(
-    '88x31' => '<img alt="'. t('Large (88x31)') .'" title="'. t('Large (88x31)') .'" src="http://i.creativecommons.org/l/by-sa/3.0/88x31.png" />',
-    '80x15' => '<img alt="'. t('Small (80x15)') .'" title="'. t('Small (80x15)') .'" src="http://i.creativecommons.org/l/by-sa/3.0/80x15.png" />',
-    '' => t('No icon'),
-  );
+  // Load default site license for image samples (or CC BY 3.0 US if no default set)
+  $default_license_uri = creativecommons_get_default_license_uri();
+  $cc = new creativecommons_license($default_license_uri ? $default_license_uri : 'http://creativecommons.org/licenses/by/3.0/us/');
 
-  $form['creativecommons_display']['creativecommons_icon_style'] = array(
+  $image_style_keys = array('button_large', 'button_small', 'icons');
+  foreach ($image_style_keys as $style) {
+    $image_styles[$style] = $cc->get_image($style) .' '. ucwords(str_replace('_', ' ', $style));
+  }
+  $image_styles[''] = t('(None)');
+
+  $form['creativecommons_display']['creativecommons_image_style'] = array(
     '#type' => 'radios',
-    '#title' => t('License icon style'),
-    '#options' => $license_icons,
-    '#default_value' => variable_get('creativecommons_icon_style', '88x31'),
+    '#title' => t('License image style'),
+    '#options' => $image_styles,
+    '#default_value' => variable_get('creativecommons_image_style', 'button_large'),
   );
 
   /* $form['creativecommons_display']['creativecommons_display'] = array(
@@ -232,7 +234,7 @@ function creativecommons_site_defaults() {
 
   // Check to see if default license is still available
   if ($cc->has_license() && !$cc->is_available()) {
-    $message = $cc->get_full_name();
+    $message = $cc->get_name();
     $message .= $cc->is_valid() ? ' is no longer available' : ' is not valid';
     drupal_set_message($message, 'warning');
   }
@@ -457,7 +459,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
 
     // Case 1: License is no longer available
     if (!$desired_license->is_available()) {
-      $message = '"'. $desired_license->get_full_name() .'" is no longer an option. Please review license selection.';
+      $message = '"'. $desired_license->get_name() .'" is no longer an option. Please review license selection.';
     }
     // Case 2: Jurisdiction change (same license type)
     elseif ($desired_license->jurisdiction != $selected_license->jurisdiction) {
@@ -516,7 +518,7 @@ function creativecommons_validate_license_uri($license_uri_key, $license_uri) {
   // Check to see if selected license is available
   $cc = new creativecommons_license($license_uri);
   if ($cc->has_license() && !$cc->is_available()) {
-    $message = $cc->get_full_name();
+    $message = $cc->get_name();
     $message .= $cc->is_valid() ? ' is no longer available.' : ' is not a valid license.';
 
     form_set_error($license_uri_key, $message);
@@ -560,6 +562,7 @@ function creativecommons_get_license_type_from_uri($uri) {
 
   return $parts[4];
 }
+
 
 /**
  * Strip out jurisdiction and version from license name.
@@ -650,7 +653,7 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
 
   // Unlicensed
   $blank_license = new creativecommons_license('');
-  $licenses[''] = $blank_license->get_full_name();
+  $licenses[''] = $blank_license->get_name();
 
   // License classes
   $licenses['Creative Commons'] = array();
@@ -687,9 +690,9 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   $zero = new creativecommons_license('http://creativecommons.org/publicdomain/zero/1.0/');
 
   if ($value_as_type)
-    $licenses['Public Domain'][$zero->type] = creativecommons_generic_license_name($zero->get_full_name());
+    $licenses['Public Domain'][$zero->type] = creativecommons_generic_license_name($zero->get_name());
   else
-    $licenses['Public Domain'][$zero->uri] = $zero->get_full_name();
+    $licenses['Public Domain'][$zero->uri] = $zero->get_name();
 
   return $licenses;
 }
@@ -1349,22 +1352,3 @@ function creativecommons_count_by_license_type($type) {
   }
 }
 
-
-//TODO: remove?
-/**
-  *  Debug code
-  */
-if (function_exists('echo_pre')) {
-}
-else {
-
-function echo_pre($arr, $head = '') {
-  echo "<pre>";
-  if ($head !='') {
-    echo "$head<br/>";
-  }
-  print_r($arr);
-  echo "</pre>";
-}
-
-}

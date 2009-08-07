@@ -1,10 +1,12 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.9 2009/08/05 04:17:21 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.10 2009/08/07 09:45:06 balleyne Exp $
 
 /**
  * @file
  * Creative Commons Drupal module install file.
  */
+
+//TODO: change table name to creativecommons_node()
 
 /**
  * Implementation of hook_schema().

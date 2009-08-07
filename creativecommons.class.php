@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.26 2009/08/05 05:03:39 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.27 2009/08/07 09:45:06 balleyne Exp $
 
 /**
  * @file
@@ -20,7 +20,7 @@
  *
  */
 
-//TODO: 2.x PHP5
+//TODO: 2.x PHP5 (useful for license types? http://us3.php.net/manual/en/language.oop5.late-static-bindings.php)
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
 //TODO: 2.x optimize by storing values when functions are called (e.g. is_valid, is_available)?
 class creativecommons_license {
@@ -137,7 +137,7 @@ class creativecommons_license {
             $this->error['message'] = $values[2]['value'];
             //TODO: should this set the error here?
             $message = 'CC API Error ('. $this->error['id'] .'): '. $this->error['message']
-              . ($this->error['id'] == 'invalid' ? ' '. $this->get_full_name() : '');
+              . ($this->error['id'] == 'invalid' ? ' '. $this->get_name() : '');
             drupal_set_message($message, 'error');
 
           }
@@ -192,11 +192,33 @@ class creativecommons_license {
   /**
    * Return full license name.
    */
-  function get_full_name() {
+  function get_name($style = 'full_text') {
     if ($this->is_valid()) {
-      // Special Case
-      $class = ($this->type && $this->type != 'zero') ? 'Creative Commons ' : '';
-      return $class . $this->name;
+      // CCO
+      $prefix = ($this->type && $this->type != 'zero') ? 'Creative Commons ' : '';
+
+      switch ($style) {
+        case 'full_text':
+          $name = $prefix . $this->name;
+          break;
+        case 'generic_text':
+          $name = creativecommons_generic_license_name($prefix . $this->name);
+          break;
+        case 'short_text':
+          switch ($this->type) {
+            case 'zero':
+              $name = 'CC0';
+              break;
+            case 'publicdomain';
+              $name = 'PD';
+              break;
+            default:
+              $name = 'CC '. drupal_strtoupper($this->type);
+          }
+          break;
+      }
+
+      return $name;
     }
     else {
       return '"'. $this->uri .'"';
@@ -208,63 +230,35 @@ class creativecommons_license {
    * Return array of images relating to current license
    * - if ($site_license) then force return of standard license image
    */
-  function get_images($site_license = FALSE) {
-    $default = array(CC_IMG_PATH .'/somerights20.gif');
-    if ($site_license)
-      $display = 1;
-    else
-      $display = variable_get('creativecommons_display', 1);
-    $images = array();
-    switch ($display) {
+  //TODO: internationalization for NC (could implement as a setting... instead of parsing automatically)
+  function get_image($style = 'icons') {
+    $img = array();
+    $img_dir = base_path() . drupal_get_path('module', 'creativecommons') .'/images';
 
-      // no image
-      case(0):
-      case(3):
-        return;
+    switch ($style) {
+      case 'button_large':
+      case 'button_small':
+        // The directory which the icons reside
+        $dir = $img_dir . '/' . str_replace('_', 's/', $style) .'/';
 
-      // icons
-      case(2):
-        // public domain license
-        if ($this->license_class == 'publicdomain') {
-          $images[] = CC_IMG_PATH .'/icon-publicdomain.png';
-          break;
-        }
-
-        // creative commons / other license
-        else {
-          if (in_array('http://web.resource.org/cc/Attribution', $this->permissions['requires']))
-            $images[] = CC_IMG_PATH .'/icon-attribution.png';
-          if (in_array('http://web.resource.org/cc/CommercialUse', $this->permissions['prohibits']))
-            $images[] = CC_IMG_PATH .'/icon-noncommercial.png';
-          if (!in_array('http://web.resource.org/cc/DerivativeWorks', $this->permissions['permits']))
-            $images[] = CC_IMG_PATH .'/icon-derivative.png';
-          if (in_array('http://web.resource.org/cc/ShareAlike', $this->permissions['requires']))
-            $images[] = CC_IMG_PATH .'/icon-sharealike.png';
-        }
+        $img[] = '<img src="'. $dir . $this->type .'.png" style="border-width: 0pt;" title="'. t($this->get_name('full_text')) .'" alt="'. t($this->get_name('full_text')) .'"/>';
         break;
-
-      // single image
-      case(1):
-      default:
-        switch ($this->license_class) {
-          case 'standard':
-            $images[] = CC_IMG_PATH .'/img-somerights.gif';
-            break;
-          case 'publicdomain':
-            $images[] = CC_IMG_PATH .'/img-norights.gif';
-            break;
-          case 'recombo':
-            $images[] = CC_IMG_PATH .'/img-recombo.gif';
-            break;
-          // generic 'some rights reserved' image
-          default:
-            return $default;
+      case 'icons':
+        $name = array(
+          'by' => 'Attribution',
+          'nc' => 'Noncommercial',
+          'sa' => 'Share Alike',
+          'nd' => 'No Derivatives',
+          'pd' => 'Public Domain',
+          'zero' => 'Zero',
+        );
+        foreach (explode('-', $this->type) as $filename) {
+          $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: 32px; height: 32px;" title="'. t($name[$filename]) .'" alt="'. t($name[$filename]) .'"/>';
         }
         break;
     }
-    foreach ($images as $k => $img_uri)
-      $images[$k] = '<img alt="Creative Commons License" border="0" src="'. $img_uri .'" />';
-    return $images;
+
+    return implode(' ', $img);
   }
 
   /**
@@ -327,20 +321,14 @@ class creativecommons_license {
     // Sanitize metadata
     $this->check_metadata();
 
-    $html = $this->html;
+    $html = str_replace("\n", '', $this->html);
 
-    // Adjust image, if necessary
-    switch (variable_get('creativecommons_icon_style', '88x31')) {
-      case '':
-        // Strip icon
-        $html = preg_replace('/<a.*<img.*br\/>/', '', $html);
-        break;
-      case '80x15':
-        $html = str_replace('88x31.png', '80x15.png', $html);
-        break;
-      case '88x31':
-        //do nothing -- API default
-        break;
+    // Strip image, replace with image from settings
+    $html = preg_replace('/<a.*<img.*br ?\/>/', '', $html);
+    $img = $this->get_image(variable_get('creativecommons_image_style', 'button_large'));
+    if ($img) {
+      $attributes['rel'] = 'license';
+      $html = l($img, $this->uri, array('attributes' => $attributes, 'html' => TRUE)) .'<br/>'. $html;
     }
 
     $marker_text = $this->type == 'zero' ? 'have been waived' : 'is licensed';
@@ -527,6 +515,37 @@ class creativecommons_license {
     }
     else {
       switch ($op) {
+          case 'update':
+            // This check exists in case an entry doesn't yet exist for the node
+            // (for example, if a node was created before the CC module was
+            // setup for that content type)
+            $exists = FALSE;
+            $check_result = db_query('SELECT COUNT(*) as count FROM {creativecommons} WHERE nid=%d', $nid);
+            if ($check_result) {
+              $row = db_fetch_object($check_result);
+              if ($row->count == 1) {
+                $exists = TRUE;
+              }
+            }
+            if ($exists) {
+              $result = db_query("UPDATE {creativecommons} SET license_uri='%s', attributionName='%s', attributionURL='%s', morePermissions='%s', ".
+                                "title='%s', type='%s', description='%s', creator='%s', rights='%s', date='%s', source='%s' WHERE nid=%d",
+                $this->uri,
+                $this->metadata['attributionName'],
+                $this->metadata['attributionURL'],
+                $this->metadata['morePermissions'],
+                $this->metadata['title'],
+                $this->metadata['type'],
+                $this->metadata['description'],
+                $this->metadata['creator'],
+                $this->metadata['rights'],
+                $this->metadata['date'],
+                $this->metadata['source'],
+                $nid
+              );
+              break;
+          }
+          // otherwise, insert
         case 'insert':
           $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, morePermissions, title, type, description, creator, rights, date, source) ".
             "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
@@ -542,23 +561,6 @@ class creativecommons_license {
               $this->metadata['rights'],
               $this->metadata['date'],
               $this->metadata['source']
-            );
-            break;
-          case 'update':
-            $result = db_query("UPDATE {creativecommons} SET license_uri='%s', attributionName='%s', attributionURL='%s', morePermissions='%s', ".
-                              "title='%s', type='%s', description='%s', creator='%s', rights='%s', date='%s', source='%s' WHERE nid=%d",
-              $this->uri,
-              $this->metadata['attributionName'],
-              $this->metadata['attributionURL'],
-              $this->metadata['morePermissions'],
-              $this->metadata['title'],
-              $this->metadata['type'],
-              $this->metadata['description'],
-              $this->metadata['creator'],
-              $this->metadata['rights'],
-              $this->metadata['date'],
-              $this->metadata['source'],
-              $nid
             );
             break;
       }
