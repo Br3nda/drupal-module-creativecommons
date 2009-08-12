@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.46 2009/08/07 09:45:06 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.47 2009/08/12 00:20:22 balleyne Exp $
 
 /**
  * @file
@@ -20,6 +20,7 @@
  *
  */
 
+//TODO: split into relevant files
 //TODO: review cc->new
 //TODO: review link output to ensure l() used when necessary http://api.drupal.org/api/function/l/6
 
@@ -246,7 +247,7 @@ function creativecommons_site_defaults() {
     '#title' => t('Default license'),
   );
 
-  $available_license_types = creativecommons_get_available_licenses(NULL, TRUE);
+  $available_license_types = creativecommons_get_available_license_list(NULL, TRUE);
 
   // If None isn't an option, create blank first entry
   if (!in_array('', $available_license_types)) {
@@ -413,7 +414,7 @@ function creativecommons_types_form() {
 function creativecommons_select_license_form($node, $key, $form_state_segment = NULL) {
   // load available licenses
   $default_jurisdiction = variable_get('creativecommons_default_jurisdiction', '');
-  $available_licenses = creativecommons_get_available_licenses( array('jurisdiction' => $default_jurisdiction) );
+  $available_licenses = creativecommons_get_available_license_list( array('jurisdiction' => $default_jurisdiction) );
   $available_license_types = creativecommons_get_available_license_types();
   $jurisdictions = creativecommons_get_jurisdictions();
 
@@ -725,7 +726,7 @@ function creativecommons_get_license_type_name($type) {
  *
  * @return array of available licenses
  */
-function creativecommons_get_available_licenses($options = NULL, $value_as_type = FALSE) {
+function creativecommons_get_available_license_list($options = NULL, $value_as_type = FALSE) {
   $licenses = creativecommons_get_licenses($options, $value_as_type);
 
   $available_licenses = creativecommons_remove_unavailable_licenses($licenses);
@@ -781,7 +782,7 @@ function creativecommons_get_license_uri_from_available($license_type, $jurisdic
   }
 
   // TODO: option to search all licenses? instead of just available?
-  $available_licenses = creativecommons_get_available_licenses( array('jurisdiction' => $jurisdiction) );
+  $available_licenses = creativecommons_get_available_license_list( array('jurisdiction' => $jurisdiction) );
 
   foreach ($available_licenses as $class => $licenses) {
     if (is_array($licenses)) {
@@ -1028,7 +1029,6 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
       if ($item_license = creativecommons_xml($node))
         return $item_license;
       break;
-
   }
   return $output;
 }
@@ -1037,7 +1037,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
  * Implementation of hook_form_alter().
  */
 function creativecommons_form_alter(&$form, $form_state, $form_id) {
-
+  // Add content type checkbox to node_type_form
   if ($form_id == 'node_type_form' && isset($form['identity']['type'])) {
     $node->type = $form['#node_type']->type;
     $form['workflow']['creativecommons'] = array(
@@ -1049,15 +1049,288 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
     );
     $form['#submit'][] = 'creativecommons_node_type_submit';
   }
+  // Add CC license selection to node form
   elseif (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
-    // Add CC license selection to node form
     $node = $form['#node'];
     if (creativecommons_node_type_is_enabled($node->type)) {
         $form = array_merge($form, creativecommons_node_form($form['#node'], $form_state));
     }
   }
+  // Add search fields to Content search form
+  //TODO: can these fields be added to node_search? (yes, but it's not obvious how that search would actually be done...)
+  elseif ($form_id == 'search_form' && ($form['module']['#value'] == 'creativecommons') && user_access('use advanced search')) {
+    //TODO: super hack, shouldn't be using $_GET
+    $cc_search_filters = explode(',', search_query_extract(str_replace('search/creativecommons/', '', $_GET['q']), 'cc'));
+
+    $form['creativecommons'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Creative Commons'),
+      '#description' => t('Find content that can be...'),
+      '#attributes' => array('class' => 'search-creativecommons'), //TODO: more of this elsewhere!
+    );
+    $form['creativecommons']['commercial_use'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('used for <strong>commercial purposes</strong>'),
+      '#default_value' => in_array('commercial_use', $cc_search_filters),
+    );
+
+    $form['creativecommons']['derivative_works'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('<strong>modified</strong>, <strong>adapted</strong> or <strong>built upon</strong>'),
+      '#default_value' => in_array('derivative_works', $cc_search_filters),
+    );
+    
+    $form['#validate'][] = 'creativecommons_search_validate';
+    
+    /**
+     * Advanced node search form (copied from node_form_alter()...). Ideally,
+     * this code should not be copied, but the CC search filter should simply be
+     * integrated into the node_search(). It's just not clear how to do that...
+     */
+    // Keyword boxes:
+    $form['advanced'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Advanced search'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#attributes' => array('class' => 'search-advanced'),
+    );
+    $form['advanced']['keywords'] = array(
+      '#prefix' => '<div class="criterion">',
+      '#suffix' => '</div>',
+    );
+    $form['advanced']['keywords']['or'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Containing any of the words'),
+      '#size' => 30,
+      '#maxlength' => 255,
+    );
+    $form['advanced']['keywords']['phrase'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Containing the phrase'),
+      '#size' => 30,
+      '#maxlength' => 255,
+    );
+    $form['advanced']['keywords']['negative'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Containing none of the words'),
+      '#size' => 30,
+      '#maxlength' => 255,
+    );
+
+    // Taxonomy box:
+    if ($taxonomy = module_invoke('taxonomy', 'form_all', 1)) {
+      $form['advanced']['category'] = array(
+        '#type' => 'select',
+        '#title' => t('Only in the category(s)'),
+        '#prefix' => '<div class="criterion">',
+        '#size' => 10,
+        '#suffix' => '</div>',
+        '#options' => $taxonomy,
+        '#multiple' => TRUE,
+      );
+    }
+
+    // Node types:
+    $types = array_map('check_plain', node_get_types('names'));
+    $form['advanced']['type'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Only of the type(s)'),
+      '#prefix' => '<div class="criterion">',
+      '#suffix' => '</div>',
+      '#options' => $types,
+    );
+    $form['advanced']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => t('Advanced search'),
+      '#prefix' => '<div class="action">',
+      '#suffix' => '</div>',
+    );
+    $form['#validate'][] = 'node_search_validate';
+  }
 
   return $form;
+}
+
+/**
+ * Implementation of hook_search().
+ */
+function creativecommons_search($op = 'search', $keys = NULL) {
+  switch ($op) {
+    case 'name':
+      return t('Creative Commons'); //TODO: review translation bit
+    case 'search':
+      // Extract CC filters from query
+      $cc_search_filters = explode(',', search_query_extract($keys, 'cc'));
+      
+      // Load available licenses
+      $cc_licenses = array();
+      foreach (creativecommons_get_available_license_list() as $class => $licenses) {
+        foreach (array_keys($licenses) as $uri) {
+          $cc_licenses[] = new creativecommons_license($uri);
+        }
+      }
+    
+      # Next for lines from node_search()
+      // Build matching conditions
+      list($join1, $where1) = _db_rewrite_sql();
+      $arguments1 = array();
+      $conditions1 = 'n.status = 1';
+      # end node_search lines
+      
+      // Creative Commons search filters
+      $keys = search_query_insert($keys, 'cc');
+      $conditions1 .= " AND cc.license_uri LIKE 'http://creativecommons.org/%'"; // only return CC licensed content
+      $join1 .= ' INNER JOIN {creativecommons} cc ON i.sid=cc.nid';
+      
+      foreach (array('commercial_use', 'derivative_works') as $filter) {
+        if (in_array($filter, $cc_search_filters)) {
+          $filter_function = 'permits_'. $filter;
+          $cc_conditions = array();
+          foreach ($cc_licenses as $license) {
+            if ($license->$filter_function()) {
+              $cc_conditions[] = "cc.license_uri LIKE 'http://creativecommons.org/%/". creativecommons_get_license_type_from_uri($license->uri) ."/%'";
+            }
+          }
+          $conditions1 .= ' AND ('. implode(' OR ', $cc_conditions) .')';
+        }
+      }
+
+      /**
+       * The rest of the code for this case has been copied from node_search(),
+       * with the exception of one line to add the CC license into the title text.
+       */
+      if ($type = search_query_extract($keys, 'type')) {
+        $types = array();
+        foreach (explode(',', $type) as $t) {
+          $types[] = "n.type = '%s'";
+          $arguments1[] = $t;
+        }
+        $conditions1 .= ' AND ('. implode(' OR ', $types) .')';
+        $keys = search_query_insert($keys, 'type');
+      }
+
+      if ($category = search_query_extract($keys, 'category')) {
+        $categories = array();
+        foreach (explode(',', $category) as $c) {
+          $categories[] = "tn.tid = %d";
+          $arguments1[] = $c;
+        }
+        $conditions1 .= ' AND ('. implode(' OR ', $categories) .')';
+        $join1 .= ' INNER JOIN {term_node} tn ON n.vid = tn.vid';
+        $keys = search_query_insert($keys, 'category');
+      }
+      
+      // Build ranking expression (we try to map each parameter to a
+      // uniform distribution in the range 0..1).
+      $ranking = array();
+      $arguments2 = array();
+      $join2 = '';
+      // Used to avoid joining on node_comment_statistics twice
+      $stats_join = FALSE;
+      $total = 0;
+      if ($weight = (int)variable_get('node_rank_relevance', 5)) {
+        // Average relevance values hover around 0.15
+        $ranking[] = '%d * i.relevance';
+        $arguments2[] = $weight;
+        $total += $weight;
+      }
+      if ($weight = (int)variable_get('node_rank_recent', 5)) {
+        // Exponential decay with half-life of 6 months, starting at last indexed node
+        $ranking[] = '%d * POW(2, (GREATEST(MAX(n.created), MAX(n.changed), MAX(c.last_comment_timestamp)) - %d) * 6.43e-8)';
+        $arguments2[] = $weight;
+        $arguments2[] = (int)variable_get('node_cron_last', 0);
+        $join2 .= ' LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
+        $stats_join = TRUE;
+        $total += $weight;
+      }
+      if (module_exists('comment') && $weight = (int)variable_get('node_rank_comments', 5)) {
+        // Inverse law that maps the highest reply count on the site to 1 and 0 to 0.
+        $scale = variable_get('node_cron_comments_scale', 0.0);
+        $ranking[] = '%d * (2.0 - 2.0 / (1.0 + MAX(c.comment_count) * %f))';
+        $arguments2[] = $weight;
+        $arguments2[] = $scale;
+        if (!$stats_join) {
+          $join2 .= ' LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
+        }
+        $total += $weight;
+      }
+      if (module_exists('statistics') && variable_get('statistics_count_content_views', 0) &&
+          $weight = (int)variable_get('node_rank_views', 5)) {
+        // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
+        $scale = variable_get('node_cron_views_scale', 0.0);
+        $ranking[] = '%d * (2.0 - 2.0 / (1.0 + MAX(nc.totalcount) * %f))';
+        $arguments2[] = $weight;
+        $arguments2[] = $scale;
+        $join2 .= ' LEFT JOIN {node_counter} nc ON nc.nid = i.sid';
+        $total += $weight;
+      }
+      
+      // When all search factors are disabled (ie they have a weight of zero), 
+      // the default score is based only on keyword relevance and there is no need to 
+      // adjust the score of each item. 
+      if ($total == 0) {
+        $select2 = 'i.relevance AS score';
+        $total = 1;
+      }
+      else {
+        $select2 = implode(' + ', $ranking) . ' AS score';
+      }
+      
+      // Do search.
+      $find = do_search($keys, 'node', 'INNER JOIN {node} n ON n.nid = i.sid '. $join1, $conditions1 . (empty($where1) ? '' : ' AND '. $where1), $arguments1, $select2, $join2, $arguments2);
+
+      // Load results.
+      $results = array();
+      foreach ($find as $item) {
+        // Build the node body.
+        $node = node_load($item->sid);
+        $node->build_mode = NODE_BUILD_SEARCH_RESULT;
+        $node = node_build_content($node, FALSE, FALSE);
+        $node->body = drupal_render($node->content);
+
+        // Fetch comments for snippet.
+        $node->body .= module_invoke('comment', 'nodeapi', $node, 'update index');
+        // Fetch terms for snippet.
+        $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
+
+        $extra = node_invoke_nodeapi($node, 'search result');
+        $results[] = array(
+          'link' => url('node/'. $item->sid, array('absolute' => TRUE)),
+          'type' => check_plain(node_get_types('name', $node)),
+
+          //TODO: this is a hack, should override search result template some how, but I'm unsure how to pass additional information through...
+          'title' => $node->title .' ('. $node->cc->get_name('short_text') .')',
+
+          'user' => theme('username', $node),
+          'date' => $node->changed,
+          'node' => $node,
+          'extra' => $extra,
+          'score' => $item->score / $total,
+          'snippet' => search_excerpt($keys, $node->body),
+        );
+      }
+      return $results;
+  }
+}
+
+/**
+ * Search validation function.
+ */
+function creativecommons_search_validate($form, &$form_state) {
+  // Initialise using any existing basic search keywords.
+  $keys = $form_state['values']['processed_keys'];
+  
+  // Insert extra restrictions into the search keywords string.
+  $cc_search_filters = array();
+  foreach (array('commercial_use', 'derivative_works') as $key) {
+    if ($form_state['values'][$key] == 1) {
+      $cc_search_filters[] = $key;
+    }
+  }
+
+  $keys = search_query_insert($keys, 'cc', implode(',', $cc_search_filters));
+  form_set_value($form['basic']['inline']['processed_keys'], trim($keys), $form_state);
 }
 
 /**
@@ -1096,6 +1369,26 @@ function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
 
     return $node;
   }
+}
+
+/**
+ * Implementation of hook_link().
+ */
+function creativecommons_link($type, $node = NULL, $teaser = FALSE) {
+  $links = array();
+
+  if ($type == 'node') {
+    if ($teaser == 1 && $node->teaser && $node->cc) {
+      $links['creativecommons'] = array(
+        'title' => t($node->cc->get_image('tiny_icons')),
+        'href' => $node->cc->uri,
+        'html' => TRUE,
+        'attributes' => array('rel' => 'license', 'title' => $node->cc->get_name('full_text')),
+      );
+    }
+  }
+
+  return $links;
 }
 
 /**

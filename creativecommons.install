@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.10 2009/08/07 09:45:06 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.11 2009/08/12 00:20:22 balleyne Exp $
 
 /**
  * @file
@@ -101,6 +101,13 @@ function creativecommons_schema() {
  */
 function creativecommons_install() {
   drupal_install_schema('creativecommons');
+
+  drupal_set_message('Creative Commons module enabled');
+  
+  // CC lite warning
+  if (module_exists('creativecommons_lite')){
+    drupal_set_message("To avoid confusion, it's not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time.", 'warning', TRUE);
+  }
 }
 
 /**

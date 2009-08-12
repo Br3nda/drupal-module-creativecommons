@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.27 2009/08/07 09:45:06 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.28 2009/08/12 00:20:22 balleyne Exp $
 
 /**
  * @file
@@ -102,7 +102,13 @@ class creativecommons_license {
     if ($this->type == 'zero') {
       $this->name = 'CC0 1.0 Universal';
       $this->license_class = 'publicdomain';
+      $this->permissions = array();
+      $this->permissions['permits'][] = 'http://creativecommons.org/ns#Reproduction';
+      $this->permissions['permits'][] = 'http://creativecommons.org/ns#Distribution';
+      $this->permissions['permits'][] = 'http://creativecommons.org/ns#DerivativeWorks';
 
+
+      //TODO: <p xmlns> stuff is redundant, check and strip if I'm right
       $this->html = '<p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">
         <a rel="license" href="'. check_plain($this->uri) .'" style="text-decoration:none;">
           <img src="http://i.creativecommons.org/l/zero/1.0/88x31.png" border="0" alt="CC0" />
@@ -229,9 +235,10 @@ class creativecommons_license {
   /**
    * Return array of images relating to current license
    * - if ($site_license) then force return of standard license image
+   * @param $style -- either button_large, button_small, icons or tiny_icons
    */
   //TODO: internationalization for NC (could implement as a setting... instead of parsing automatically)
-  function get_image($style = 'icons') {
+  function get_image($style) {
     $img = array();
     $img_dir = base_path() . drupal_get_path('module', 'creativecommons') .'/images';
 
@@ -243,6 +250,8 @@ class creativecommons_license {
 
         $img[] = '<img src="'. $dir . $this->type .'.png" style="border-width: 0pt;" title="'. t($this->get_name('full_text')) .'" alt="'. t($this->get_name('full_text')) .'"/>';
         break;
+      case 'tiny_icons':
+        $px = '15';
       case 'icons':
         $name = array(
           'by' => 'Attribution',
@@ -252,13 +261,16 @@ class creativecommons_license {
           'pd' => 'Public Domain',
           'zero' => 'Zero',
         );
+        if (!$px) {
+          $px = '32';
+        }
         foreach (explode('-', $this->type) as $filename) {
-          $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: 32px; height: 32px;" title="'. t($name[$filename]) .'" alt="'. t($name[$filename]) .'"/>';
+          $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: '. $px .'px; height: '. $px .'px;" alt="'. t($name[$filename]) .'"/>';
         }
         break;
     }
 
-    return implode(' ', $img);
+    return implode(($style == 'tiny_icons' ? '' : ' '), $img);
   }
 
   /**
@@ -305,6 +317,20 @@ class creativecommons_license {
       return FALSE;
 
     return TRUE;
+  }
+  
+  /**
+   * Return true if this license allows commercial use, false otherwise.
+   */
+  function permits_commercial_use() {
+    return !is_array($this->permissions['prohibits']) || !in_array('http://creativecommons.org/ns#CommercialUse', $this->permissions['prohibits']);
+  }
+  
+  /**
+   * Return true if this license allows derivative works, false otherwise.
+   */
+  function permits_derivative_works() {
+    return is_array($this->permissions['permits']) && in_array('http://creativecommons.org/ns#DerivativeWorks', $this->permissions['permits']);
   }
 
   /**
