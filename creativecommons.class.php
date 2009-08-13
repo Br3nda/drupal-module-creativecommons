@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.28 2009/08/12 00:20:22 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.29 2009/08/13 22:40:26 balleyne Exp $
 
 /**
  * @file
@@ -71,13 +71,14 @@ class creativecommons_license {
    */
   function load() {
     if ($this->nid) {
-      $result = db_query("SELECT * FROM {creativecommons} cc WHERE cc.nid = %d", $this->nid);
+      $result = db_query("SELECT * FROM {creativecommons_node} cc WHERE cc.nid = %d", $this->nid);
       if ($row = db_fetch_object($result)) {
         $this->uri = $row->license_uri;
 
         $this->metadata = array();
         foreach ($row as $key => $value) {
-          if ($key != 'license_uri' && $key != 'nid') {
+          // Only load available metadata
+          if ($key != 'license_uri' && $key != 'nid' && creativecommons_metadata_is_available($key)) {
             $this->metadata[$key] = $value;
           }
         }
@@ -108,13 +109,9 @@ class creativecommons_license {
       $this->permissions['permits'][] = 'http://creativecommons.org/ns#DerivativeWorks';
 
 
-      //TODO: <p xmlns> stuff is redundant, check and strip if I'm right
-      $this->html = '<p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">
-        <a rel="license" href="'. check_plain($this->uri) .'" style="text-decoration:none;">
-          <img src="http://i.creativecommons.org/l/zero/1.0/88x31.png" border="0" alt="CC0" />
-        </a>
-        <br />
-        To the extent possible under law, all copyright and related or neighboring rights to this work have been waived.</p>';
+      // This may not be necessary when output is build dynamically, rather than parsed from API
+      $this->html = l($this->get_image('button_large'), $this->uri, array('html' => TRUE, 'rel' => 'license'))
+        .'<br />'. t('To the extent possible under law, all copyright and related or neighboring rights to this work have been waived.');
       return;
     }
 
@@ -254,18 +251,18 @@ class creativecommons_license {
         $px = '15';
       case 'icons':
         $name = array(
-          'by' => 'Attribution',
-          'nc' => 'Noncommercial',
-          'sa' => 'Share Alike',
-          'nd' => 'No Derivatives',
-          'pd' => 'Public Domain',
-          'zero' => 'Zero',
+          'by' => t('Attribution'),
+          'nc' => t('Noncommercial'),
+          'sa' => t('Share Alike'),
+          'nd' => t('No Derivatives'),
+          'pd' => t('Public Domain'),
+          'zero' => t('Zero'),
         );
         if (!$px) {
           $px = '32';
         }
         foreach (explode('-', $this->type) as $filename) {
-          $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: '. $px .'px; height: '. $px .'px;" alt="'. t($name[$filename]) .'"/>';
+          $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: '. $px .'px; height: '. $px .'px;" alt="'. $name[$filename] .'"/>';
         }
         break;
     }
@@ -546,7 +543,7 @@ class creativecommons_license {
             // (for example, if a node was created before the CC module was
             // setup for that content type)
             $exists = FALSE;
-            $check_result = db_query('SELECT COUNT(*) as count FROM {creativecommons} WHERE nid=%d', $nid);
+            $check_result = db_query('SELECT COUNT(*) as count FROM {creativecommons_node} WHERE nid=%d', $nid);
             if ($check_result) {
               $row = db_fetch_object($check_result);
               if ($row->count == 1) {
@@ -554,41 +551,32 @@ class creativecommons_license {
               }
             }
             if ($exists) {
-              $result = db_query("UPDATE {creativecommons} SET license_uri='%s', attributionName='%s', attributionURL='%s', morePermissions='%s', ".
-                                "title='%s', type='%s', description='%s', creator='%s', rights='%s', date='%s', source='%s' WHERE nid=%d",
-                $this->uri,
-                $this->metadata['attributionName'],
-                $this->metadata['attributionURL'],
-                $this->metadata['morePermissions'],
-                $this->metadata['title'],
-                $this->metadata['type'],
-                $this->metadata['description'],
-                $this->metadata['creator'],
-                $this->metadata['rights'],
-                $this->metadata['date'],
-                $this->metadata['source'],
-                $nid
-              );
+              $args = array($this->uri);
+              $fields = array("license_uri='%s'");
+              foreach($this->metadata as $key => $value) {
+                $fields[] = $key ."='%s'";
+                $args[] = $value;
+              }
+              $args[] = $nid;
+              $query = 'UPDATE {creativecommons_node} SET '. implode(', ', $fields) .' WHERE nid=%d';
+              $args = array_merge(array($query), $args);
+              $result = call_user_func_array('db_query', $args);
               break;
           }
           // otherwise, insert
         case 'insert':
-          $result = db_query("INSERT INTO {creativecommons} (nid, license_uri, attributionName, attributionURL, morePermissions, title, type, description, creator, rights, date, source) ".
-            "VALUES (%d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-              $nid,
-              $this->uri,
-              $this->metadata['attributionName'],
-              $this->metadata['attributionURL'],
-              $this->metadata['morePermissions'],
-              $this->metadata['title'],
-              $this->metadata['type'],
-              $this->metadata['description'],
-              $this->metadata['creator'],
-              $this->metadata['rights'],
-              $this->metadata['date'],
-              $this->metadata['source']
-            );
-            break;
+          $args = array($nid, $this->uri);
+          $fields = array('nid', 'license_uri');
+          $values = array('%d', "'%s'");
+          foreach($this->metadata as $key => $value) {
+            $fields[] = $key;
+            $values[] = "'%s'";
+            $args[] = $value;
+          }
+          $query = 'INSERT INTO {creativecommons_node} ('. implode(', ', $fields) .') VALUES ('. implode(', ', $values) .')';
+          $args = array_merge(array($query), $args);
+          $result = call_user_func_array('db_query', $args);
+          break;
       }
       //TODO: check for error here?
       return $result;
