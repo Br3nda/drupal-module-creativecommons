@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.29 2009/08/13 22:40:26 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.30 2009/08/13 23:13:25 balleyne Exp $
 
 /**
  * @file
@@ -238,14 +238,19 @@ class creativecommons_license {
   function get_image($style) {
     $img = array();
     $img_dir = base_path() . drupal_get_path('module', 'creativecommons') .'/images';
+    $nc = variable_get('creativecommons_nc_img', '');
 
     switch ($style) {
       case 'button_large':
+        //TODO: missing jp large buttons... not on creativecommons.org
+        if ($nc && $nc != 'jp' && strpos($this->type, 'nc') !== FALSE) {
+          $filename = $this->type .'.'. $nc;
+        }
       case 'button_small':
         // The directory which the icons reside
         $dir = $img_dir . '/' . str_replace('_', 's/', $style) .'/';
 
-        $img[] = '<img src="'. $dir . $this->type .'.png" style="border-width: 0pt;" title="'. t($this->get_name('full_text')) .'" alt="'. t($this->get_name('full_text')) .'"/>';
+        $img[] = '<img src="'. $dir . ($filename ? $filename : $this->type) .'.png" style="border-width: 0pt;" title="'. t($this->get_name('full_text')) .'" alt="'. t($this->get_name('full_text')) .'"/>';
         break;
       case 'tiny_icons':
         $px = '15';
@@ -253,6 +258,8 @@ class creativecommons_license {
         $name = array(
           'by' => t('Attribution'),
           'nc' => t('Noncommercial'),
+          'nc-eu' => t('Noncommercial (Euro)'),
+          'nc-jp' => t('Noncommercial (Yen)'),
           'sa' => t('Share Alike'),
           'nd' => t('No Derivatives'),
           'pd' => t('Public Domain'),
@@ -262,6 +269,11 @@ class creativecommons_license {
           $px = '32';
         }
         foreach (explode('-', $this->type) as $filename) {
+          // NC options
+          if ($filename == 'nc' && $nc) {
+            $filename .= '-'. $nc;
+          }
+        
           $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: '. $px .'px; height: '. $px .'px;" alt="'. $name[$filename] .'"/>';
         }
         break;
