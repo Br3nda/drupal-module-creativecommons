@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.52 2009/08/17 16:42:26 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.53 2009/08/17 18:52:56 balleyne Exp $
 
 /**
  * @file
@@ -158,10 +158,8 @@ function creativecommons_settings() {
     '#title' => t('Display'),
   );
 
-  //TODO: add license name option (full, generic, short)
-
   $cc = creativecommons_get_sample_license();
-  
+
   $text_style_keys = array('full', 'generic', 'short');
   foreach ($text_style_keys as $style) {
     $text_styles[$style] = ucwords($style) .', e.g. '. $cc->get_name($style);
@@ -773,13 +771,13 @@ function creativecommons_license_sort($x, $y) {
     'by-nc-sa' => 6,
     'by-nc-nd' => 7,
   );
-  
+
   // Need to extract types
   if (strpos($x, 'http') !== FALSE) {
     $x = creativecommons_get_license_type_from_uri($x);
     $y = creativecommons_get_license_type_from_uri($y);
   }
-  
+
   return $order[$x] - $order[$y];
 }
 
@@ -2033,5 +2031,15 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
       }
       break;
   }
+}
+
+/**
+ * Implementation of hook_views_api().
+ */
+function creativecommons_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'creativecommons') .'/includes',
+  );
 }
 

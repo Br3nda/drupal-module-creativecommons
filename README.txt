@@ -1,4 +1,4 @@
-/* $Id: README.txt,v 1.1.2.2 2009/08/05 05:06:35 balleyne Exp $ */
+/* $Id: README.txt,v 1.1.2.3 2009/08/17 18:52:56 balleyne Exp $ */
 
 -- SUMMARY --
 
@@ -9,6 +9,11 @@ using a Creative Commons Node License block and the Creative Commons Site
 License block. The module also supports some license metadata fields. License
 information is output using ccREL RDFa inside the blocks, and can optionally be
 output as RDF/XML in the body of a node.
+
+Creative Commons search is available at /search/creativecommons/, and (if the
+Views module is installed and enabled) a Creative Commons view is available at
+/creativecommons. Creative Commons license information and metadata are 
+available to the Views module.
 
 For a full description of the module, visit the project page:
   http://drupal.org/project/creativecommons
@@ -42,17 +47,21 @@ None.
     Users in roles with the "attach creative commons" permission will be able to
     attach license information to the content of a node.
 
-* Set available license types, required metadata and display settings
+* Set available license types, required/available metadata and display settings
   Administer >> Settings >> Creative Commons. To make it mandatory to specify a
   license, simply make the 'None' type unavailable.
 
 * Set default license type and jurisdiction in Administer >> Settings >> 
   Creative Commons >> site defaults. Here, you can set the default license to be
-  used as a site-wide license if you wish.
+  used as a site-wide license if you wish, and you can include any relevant
+  metadata.
   
 * Enable Creative Commons licensing for desired content types in Administer >>
   Settings >> Creative Commons >> content types. For example, you might wish to 
   allow Creative Commons licensing for blog posts, but not forum posts.
+ 
+* In your Drupal user account settings, you can set a jurisdiction or default
+  license to override the site defaults.
 
 
 -- CONTACT --
