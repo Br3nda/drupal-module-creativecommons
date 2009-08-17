@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.32 2009/08/17 05:05:53 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.33 2009/08/17 17:25:05 balleyne Exp $
 
 /**
  * @file
@@ -228,7 +228,6 @@ class creativecommons_license {
    * - if ($site_license) then force return of standard license image
    * @param $style -- either button_large, button_small, icons or tiny_icons
    */
-  //TODO: internationalization for NC (could implement as a setting... instead of parsing automatically)
   function get_image($style) {
     $img = array();
     $img_dir = base_path() . drupal_get_path('module', 'creativecommons') .'/images';
@@ -339,9 +338,8 @@ class creativecommons_license {
   /**
    * Return html containing license link (+ images)
    */
-  //TODO: dc:source, dc:copyright, dc:year, etc...
+  //TODO: missing dc:creator...
   //TODO: "use an appropriate profile URL in the header of the HTML document" (p. 15, ccREL)
-  //TODO: site license!!
   function get_html($site = FALSE) {
 
     // must have a license to display html
@@ -352,12 +350,14 @@ class creativecommons_license {
     // Load additional info, used when defaulting to Drupal metadata
     if ($site) {
       $default_title = variable_get('site_name', '');
+      $default_attributionURL = url('<front>', array('absolute' => TRUE));
     }
     else {
       $node = node_load($this->nid);
       $user = user_load($node->uid);
       $default_title = $node->title;
       $default_name = $user->name;
+      $default_attributionURL = url('user/'. $user->uid, array('absolute' => TRUE));
     }
 
     $html = "\n<div about=\"". url(($site ? '<front>' : 'node/'. $this->nid), array('absolute' => TRUE)) ."\" instanceof=\"cc:Work\"".
@@ -381,18 +381,18 @@ class creativecommons_license {
       '@dc:type-name' => $this->metadata['type'] ? drupal_strtolower($dcmi_types[$this->metadata['type']]) : t('Work'),
       '%dc:title' => $this->metadata['title'] ? $this->metadata['title'] : $default_title,
       '@cc:attributionName' => $this->metadata['attributionName'] ? $this->metadata['attributionName'] : $default_name,
-      '@cc:attributionURL' => $this->metadata['attributionURL'] ? $this->metadata['attributionURL'] : url('user/'. $user->uid, array('absolute' => TRUE)),
+      '@cc:attributionURL' => $this->metadata['attributionURL'] ? $this->metadata['attributionURL'] : $default_attributionURL,
     );
     
-    // Site license, no attribution name TODO: attributionURL?
+    // Site license, no attribution name
     if ($site && !$this->metadata['attributionName']) {
       // CC0
       if ($this->type == 'zero') {
-         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, have been waived.', $args);
+         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">%dc:title</a>, have been waived.', $args);
       }
       // Rest
       else {
-        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);      
+        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">%dc:title</a>, is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);      
       }
     }
     // Otherwise
@@ -407,11 +407,26 @@ class creativecommons_license {
       }
     }
 
+    // dc:source
+    if ($this->metadata['source']) {
+      $html .= '<span rel="dc:source" href="'. check_plain($this->metadata['source']) .'"/>';
+    }
+
     // CC+
     if ($this->metadata['morePermissions']) {
-      $args = array('@cc:morePermissions' => $this->metadata['morePermissions']);
-      $html .= ' '. t('There are <a rel="cc:morePermissions" href="@cc:morePermissions">alternative licensing options</a>.', $args);
+      $html .= ' '. t('There are <a rel="cc:morePermissions" href="@cc:morePermissions">alternative licensing options</a> available.', array('@cc:morePermissions' => $this->metadata['morePermissions']));
     }
+
+    // dc:description
+    if ($this->metadata['description']) {
+      $html .= '<p>'. t('<span property="dc:description">@dc:description</span>', array('@dc:description' => $this->metadata['description'])) .'</p>';
+    }
+
+    // dc:year
+    if ($this->metadata['date'] || $this->metadata['rights']) {
+      $html .= '<p>'. t('Copyright &copy; <span property="dc:date">@dc:date</span> <span property="dc:rights">@dc:rights</span>.', array('@dc:date' => $this->metadata['date'], '@dc:rights' => $this->metadata['rights'])) .'</p>';
+    }
+    
 
 
     $html .= "\n</div>\n";
