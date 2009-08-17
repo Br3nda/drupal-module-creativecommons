@@ -1,90 +1,88 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.13 2009/08/13 23:13:25 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.14 2009/08/17 02:22:42 balleyne Exp $
 
 /**
  * @file
  * Creative Commons Drupal module install file.
  */
 
-//TODO: change table name to creativecommons_node() for next commit
-
 /**
  * Implementation of hook_schema().
  */
 function creativecommons_schema() {
   $schema['creativecommons_node'] = array(
-    'description' => t('Creative Commons license to node mapping.'),
+    'description' => 'Creative Commons license to node mapping.',
     'fields' => array(
       'nid' => array(
-        'description' => t('Node identifier.'),
+        'description' => 'Node identifier.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE
       ),
       'license_uri' => array(
-        'description' => t('Creative Commons license uri.'),
+        'description' => 'Creative Commons license uri.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       // from http://creativecommons.org/ns
       'attributionName' => array(
-        'description' => t('The name the creator of a Work would like used when attributing re-use.'),
+        'description' => 'The name the creator of a Work would like used when attributing re-use.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'attributionURL' => array(
-        'description' => t('The URL the creator of a Work would like used when attributing re-use.'),
+        'description' => 'The URL the creator of a Work would like used when attributing re-use.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'morePermissions' => array(
-        'description' => t('The URL where additional permissions or alternative licenses for a Work are available.'),
+        'description' => 'The URL where additional permissions or alternative licenses for a Work are available.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       // from http://dublincore.org/documents/dces/
       'title' => array(
-        'description' => t('A name given to the work.'),
+        'description' => 'A name given to the work.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'type' => array(
-        'description' => t('The nature of genre of the work.'),
+        'description' => 'The nature of genre of the work.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'description' => array(
-        'description' => t('An account of the work.'),
+        'description' => 'An account of the work.',
         'type' => 'text',
         'size' => 'big',
         'not null' => TRUE,
       ),
       'creator' => array(
-        'description' => t('An entity primarily responsible for making the work.'),
+        'description' => 'An entity primarily responsible for making the work.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'rights' => array(
-        'description' => t('Copyright holder\'s name.'),
+        'description' => "Copyright holder's name.",
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'date' => array(
-        'description' => t('Year of Copyright.'),
+        'description' => 'Year of Copyright.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'source' => array(
-        'description' => t('Source work URL'),
+        'description' => 'Source work URL',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
@@ -92,37 +90,37 @@ function creativecommons_schema() {
     ),
     'primary key' => array('nid'),
   );
-  
+
   $schema['creativecommons_user'] = array(
-    'description' => t('Creative Commons license user settings.'),
+    'description' => 'Creative Commons license user settings.',
     'fields' => array(
       'uid' => array(
-        'description' => t('User identifier.'),
+        'description' => 'User identifier.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE
       ),
       'license_type' => array(
-        'description' => t('Creative Commons default license type.'),
+        'description' => 'Creative Commons default license type.',
         'type' => 'varchar',
         'length' => 12,
         'not null' => TRUE,
       ),
       'jurisdiction' => array(
-        'description' => t('Creative Commons default license jurisdiction.'),
+        'description' => 'Creative Commons default license jurisdiction.',
         'type' => 'varchar',
         'length' => 4,
         'not null' => TRUE,
       ),
       // from http://creativecommons.org/ns
       'attributionName' => array(
-        'description' => t('The name the User would like used when attributing re-use.'),
+        'description' => 'The name the User would like used when attributing re-use.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'attributionURL' => array(
-        'description' => t('The URL the User would like used when attributing re-use.'),
+        'description' => 'The URL the User would like used when attributing re-use.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
@@ -130,7 +128,7 @@ function creativecommons_schema() {
     ),
     'primary key' => array('uid'),
   );
-  
+
 
   return $schema;
 }
@@ -142,10 +140,10 @@ function creativecommons_install() {
   drupal_install_schema('creativecommons');
 
   drupal_set_message('Creative Commons module enabled');
-  
+
   // CC lite warning
-  if (module_exists('creativecommons_lite')){
-    drupal_set_message("To avoid confusion, it's not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time.", 'warning', TRUE);
+  if (module_exists('creativecommons_lite')) {
+    drupal_set_message(st('To avoid confusion, it is not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time.'), 'warning');
   }
 }
 
@@ -210,35 +208,35 @@ function creativecommons_update_3() {
   db_rename_table($ret, 'creativecommons', 'creativecommons_node');
 
   $creativecommons_user = array(
-    'description' => t('Creative Commons license user settings.'),
+    'description' => 'Creative Commons license user settings.',
     'fields' => array(
       'uid' => array(
-        'description' => t('User identifier.'),
+        'description' => 'User identifier.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE
       ),
       'license_type' => array(
-        'description' => t('Creative Commons default license type.'),
+        'description' => 'Creative Commons default license type.',
         'type' => 'varchar',
         'length' => 12,
         'not null' => TRUE,
       ),
       'jurisdiction' => array(
-        'description' => t('Creative Commons default license jurisdiction.'),
+        'description' => 'Creative Commons default license jurisdiction.',
         'type' => 'varchar',
         'length' => 4,
         'not null' => TRUE,
       ),
       // from http://creativecommons.org/ns
       'attributionName' => array(
-        'description' => t('The name the User would like used when attributing re-use.'),
+        'description' => 'The name the User would like used when attributing re-use.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
       ),
       'attributionURL' => array(
-        'description' => t('The URL the User would like used when attributing re-use.'),
+        'description' => 'The URL the User would like used when attributing re-use.',
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
@@ -248,7 +246,7 @@ function creativecommons_update_3() {
   );
 
   db_create_table($ret, 'creativecommons_user', $creativecommons_user);
-  
+
   return $ret;
 }
 

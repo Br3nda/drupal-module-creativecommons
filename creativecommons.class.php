@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.30 2009/08/13 23:13:25 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.31 2009/08/17 02:22:42 balleyne Exp $
 
 /**
  * @file
@@ -60,7 +60,7 @@ class creativecommons_license {
     }
     // don't fetch a blank license
     else {
-      $this->name = 'None (All Rights Reserved)';
+      $this->name = t('None (All Rights Reserved)');
       $this->type = '';
     }
   }
@@ -101,7 +101,7 @@ class creativecommons_license {
 
     // Special Case: CC0
     if ($this->type == 'zero') {
-      $this->name = 'CC0 1.0 Universal';
+      $this->name = t('CC0 1.0 Universal');
       $this->license_class = 'publicdomain';
       $this->permissions = array();
       $this->permissions['permits'][] = 'http://creativecommons.org/ns#Reproduction';
@@ -139,8 +139,11 @@ class creativecommons_license {
             $this->error['id'] = $values[1]['value'];
             $this->error['message'] = $values[2]['value'];
             //TODO: should this set the error here?
-            $message = 'CC API Error ('. $this->error['id'] .'): '. $this->error['message']
-              . ($this->error['id'] == 'invalid' ? ' '. $this->get_name() : '');
+            $t_args = array(
+              '@error-id' => $this->error['id'],
+              '%error-message' => $this->error['message'] . ($this->error['id'] == 'invalid' ? ' '. $this->get_name() : ''),
+            );
+            $message = t('CC API Error (@error-id): %error-message', $t_args);
             drupal_set_message($message, 'error');
 
           }
@@ -195,22 +198,23 @@ class creativecommons_license {
   /**
    * Return full license name.
    */
-  function get_name($style = 'full_text') {
+  function get_name($style = 'full') {
     if ($this->is_valid()) {
       // CCO
-      $prefix = ($this->type && $this->type != 'zero') ? 'Creative Commons ' : '';
+      $prefix = ($this->type && $this->type != 'zero') ? t('Creative Commons') .' ' : '';
 
       switch ($style) {
-        case 'full_text':
+        case 'full':
           $name = $prefix . $this->name;
           break;
-        case 'generic_text':
+        case 'generic':
           $name = creativecommons_generic_license_name($prefix . $this->name);
           break;
-        case 'short_text':
+        case 'short':
+          //TODO: t() ?
           switch ($this->type) {
             case 'zero':
-              $name = 'CC0';
+              $name = t('CC0');
               break;
             case 'publicdomain';
               $name = 'PD';
@@ -248,9 +252,9 @@ class creativecommons_license {
         }
       case 'button_small':
         // The directory which the icons reside
-        $dir = $img_dir . '/' . str_replace('_', 's/', $style) .'/';
+        $dir = $img_dir .'/'. str_replace('_', 's/', $style) .'/';
 
-        $img[] = '<img src="'. $dir . ($filename ? $filename : $this->type) .'.png" style="border-width: 0pt;" title="'. t($this->get_name('full_text')) .'" alt="'. t($this->get_name('full_text')) .'"/>';
+        $img[] = '<img src="'. $dir . ($filename ? $filename : $this->type) .'.png" style="border-width: 0pt;" title="'. $this->get_name('full') .'" alt="'. $this->get_name('full') .'"/>';
         break;
       case 'tiny_icons':
         $px = '15';
@@ -273,7 +277,7 @@ class creativecommons_license {
           if ($filename == 'nc' && $nc) {
             $filename .= '-'. $nc;
           }
-        
+
           $img[] = '<img src="'. $img_dir .'/icons/'. $filename .'.png" style="border-width: 0pt; width: '. $px .'px; height: '. $px .'px;" alt="'. $name[$filename] .'"/>';
         }
         break;
@@ -327,14 +331,14 @@ class creativecommons_license {
 
     return TRUE;
   }
-  
+
   /**
    * Return true if this license allows commercial use, false otherwise.
    */
   function permits_commercial_use() {
     return !is_array($this->permissions['prohibits']) || !in_array('http://creativecommons.org/ns#CommercialUse', $this->permissions['prohibits']);
   }
-  
+
   /**
    * Return true if this license allows derivative works, false otherwise.
    */
@@ -346,6 +350,7 @@ class creativecommons_license {
    * Return html containing license link (+ images)
    */
   //TODO: 2.x implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf), with Drupal defaults
+  //TODO: translations
   function get_html() {
 
     // must have a license to display html
@@ -403,8 +408,8 @@ class creativecommons_license {
 
     // Alternative licensing options cc:morePermissions
     if ($this->metadata['morePermissions']) {
-      $attributes = array('rel' => 'cc:morePermissions');
-      $html .= ' There are '. l(t('alternative licensing options'), $this->metadata['morePermissions'], array('attributes' => $attributes)) .'.';
+      $args = array('@rel' => 'cc:morePermissions', '@url' => $this->metadata['morePermissions']);
+      $html .= ' '. t('There are <a rel="@rel" href="@url">alternative licensing options</a>.', $args);
     }
 
     $html = "\n<div about=\"". url('node/'. $this->nid, array('absolute' => TRUE)) ."\" instanceof=\"cc:Work\"".
@@ -543,10 +548,11 @@ class creativecommons_license {
    */
   function save($nid, $op) {
     if (!$nid) {
-      drupal_set_message('A node must be specified to save a license', 'error');
+      drupal_set_message(t('A node must be specified to save a license.'), 'error');
     }
     else if (!$this->is_available()) {
-      drupal_set_message('License is not available', 'error');
+      $message = t('The %license-name license is not enabled.', array('%license-name', $this->get_name()));
+      drupal_set_message($message, 'error');
     }
     else {
       switch ($op) {
@@ -565,7 +571,7 @@ class creativecommons_license {
             if ($exists) {
               $args = array($this->uri);
               $fields = array("license_uri='%s'");
-              foreach($this->metadata as $key => $value) {
+              foreach ($this->metadata as $key => $value) {
                 $fields[] = $key ."='%s'";
                 $args[] = $value;
               }
@@ -580,7 +586,7 @@ class creativecommons_license {
           $args = array($nid, $this->uri);
           $fields = array('nid', 'license_uri');
           $values = array('%d', "'%s'");
-          foreach($this->metadata as $key => $value) {
+          foreach ($this->metadata as $key => $value) {
             $fields[] = $key;
             $values[] = "'%s'";
             $args[] = $value;
