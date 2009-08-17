@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.31 2009/08/17 02:22:42 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.32 2009/08/17 05:05:53 balleyne Exp $
 
 /**
  * @file
@@ -107,11 +107,6 @@ class creativecommons_license {
       $this->permissions['permits'][] = 'http://creativecommons.org/ns#Reproduction';
       $this->permissions['permits'][] = 'http://creativecommons.org/ns#Distribution';
       $this->permissions['permits'][] = 'http://creativecommons.org/ns#DerivativeWorks';
-
-
-      // This may not be necessary when output is build dynamically, rather than parsed from API
-      $this->html = l($this->get_image('button_large'), $this->uri, array('html' => TRUE, 'rel' => 'license'))
-        .'<br />'. t('To the extent possible under law, all copyright and related or neighboring rights to this work have been waived.');
       return;
     }
 
@@ -169,11 +164,6 @@ class creativecommons_license {
           break;
       }
     }
-
-
-    // Special case: HTML TODO: 2.x is there a better way to do this? or does it matter, if it'll be constructed from scratch eventually anyways?
-    preg_match('/<html>(.*)<\/html>/', $xml, $matches);
-    $this->html = $matches[1];
   }
 
   /**
@@ -349,127 +339,83 @@ class creativecommons_license {
   /**
    * Return html containing license link (+ images)
    */
-  //TODO: 2.x implement ccREL fully (p. ~14 http://wiki.creativecommons.org/images/d/d6/Ccrel-1.0.pdf), with Drupal defaults
-  //TODO: translations
-  function get_html() {
+  //TODO: dc:source, dc:copyright, dc:year, etc...
+  //TODO: "use an appropriate profile URL in the header of the HTML document" (p. 15, ccREL)
+  //TODO: site license!!
+  function get_html($site = FALSE) {
 
     // must have a license to display html
     if (!$this->has_license()) {
       return;
     }
 
-    // Sanitize metadata
-    $this->check_metadata();
+    // Load additional info, used when defaulting to Drupal metadata
+    if ($site) {
+      $default_title = variable_get('site_name', '');
+    }
+    else {
+      $node = node_load($this->nid);
+      $user = user_load($node->uid);
+      $default_title = $node->title;
+      $default_name = $user->name;
+    }
 
-    $html = str_replace("\n", '', $this->html);
+    $html = "\n<div about=\"". url(($site ? '<front>' : 'node/'. $this->nid), array('absolute' => TRUE)) ."\" instanceof=\"cc:Work\"".
+              "\n\txmlns:cc=\"http://creativecommons.org/ns#\"".
+              "\n\txmlns:dc=\"http://purl.org/dc/elements/1.1/\"".
+              "\n\tclass=\"creativecommons\">\n\t\t";
 
-    // Strip image, replace with image from settings
-    $html = preg_replace('/<a.*<img.*br ?\/>/', '', $html);
+    // Image
     $img = $this->get_image(variable_get('creativecommons_image_style', 'button_large'));
     if ($img) {
       $attributes['rel'] = 'license';
-      $html = l($img, $this->uri, array('attributes' => $attributes, 'html' => TRUE)) .'<br/>'. $html;
+      $html .= l($img, $this->uri, array('attributes' => $attributes, 'html' => TRUE)) .'<br/>';
     }
 
-    $marker_text = $this->type == 'zero' ? 'have been waived' : 'is licensed';
-
-    // Adjust default type in API html if user has specified a type
-    if ($this->metadata['type']) {
-      $dcmi_types = creativecommons_get_dcmi_types();
-      $html = str_replace('work', drupal_strtolower($dcmi_types[$this->metadata['type']]), $html);
-
-      // Insert the type
-      $html = str_replace('http://purl.org/dc/dcmitype/', 'http://purl.org/dc/dcmitype/'. $this->metadata['type'], $html);
-
-      //Remove ns definition, as we do this in the encompassing div
-      $html = str_replace(' xmlns:dc="http://purl.org/dc/elements/1.1/"', '', $html);
-    }
-
-    // Add title of work, if specified
-    if ($this->metadata['title']) {
-      $html = str_replace(' '. $marker_text, ', <span property="dc:title">'. $this->metadata['title'] .'</span>, '. $marker_text, $html);
-    }
-
-    // Add attribution name, if specified
-    if ($this->metadata['attributionName']) {
-      $author = 'by ';
-
-      if ($this->metadata['attributionURL']) {
-        $attributes = array('property' => 'cc:attributionName',
-                            'rel' => 'cc:attributionURL');
-        $author .= l($this->metadata['attributionName'], $this->metadata['attributionURL'], array('attributes' => $attributes));
+    // Main
+    $dcmi_types = creativecommons_get_dcmi_types();
+    $args = array(
+      '@license-name' => $this->get_name(variable_get('creativecommons_text_style', 'full')),
+      '@license-uri' => $this->uri,
+      '@dc:type-uri' => 'http://purl.org/dc/dcmitype/'. ($this->metadata['type'] ? $this->metadata['type'] : ''),
+      '@dc:type-name' => $this->metadata['type'] ? drupal_strtolower($dcmi_types[$this->metadata['type']]) : t('Work'),
+      '%dc:title' => $this->metadata['title'] ? $this->metadata['title'] : $default_title,
+      '@cc:attributionName' => $this->metadata['attributionName'] ? $this->metadata['attributionName'] : $default_name,
+      '@cc:attributionURL' => $this->metadata['attributionURL'] ? $this->metadata['attributionURL'] : url('user/'. $user->uid, array('absolute' => TRUE)),
+    );
+    
+    // Site license, no attribution name TODO: attributionURL?
+    if ($site && !$this->metadata['attributionName']) {
+      // CC0
+      if ($this->type == 'zero') {
+         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, have been waived.', $args);
       }
+      // Rest
       else {
-        $author .= '<span property="cc:attributionName">'. $this->metadata['attributionName'] .'</span>';
+        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);      
       }
-
-      $html = str_replace($marker_text, $author .' '. $marker_text, $html);
+    }
+    // Otherwise
+    else {
+      // CC0
+      if ($this->type == 'zero') {
+         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> have been waived.', $args);
+      }
+      // Rest
+      else {
+        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);
+      }
     }
 
-    // Alternative licensing options cc:morePermissions
+    // CC+
     if ($this->metadata['morePermissions']) {
-      $args = array('@rel' => 'cc:morePermissions', '@url' => $this->metadata['morePermissions']);
-      $html .= ' '. t('There are <a rel="@rel" href="@url">alternative licensing options</a>.', $args);
+      $args = array('@cc:morePermissions' => $this->metadata['morePermissions']);
+      $html .= ' '. t('There are <a rel="cc:morePermissions" href="@cc:morePermissions">alternative licensing options</a>.', $args);
     }
 
-    $html = "\n<div about=\"". url('node/'. $this->nid, array('absolute' => TRUE)) ."\" instanceof=\"cc:Work\"".
-              "\n\txmlns:cc=\"http://creativecommons.org/ns#\"".
-              "\n\txmlns:dc=\"http://purl.org/dc/elements/1.1/\"".
-              "\n\tclass=\"creativecommons\">\n\t\t". $html ."\n</div>\n";
 
+    $html .= "\n</div>\n";
     return $html;
-
-
-
-    //TODO: remove when fully replaced -- need to review date output, etc
-    /* $txt = 'This work is licensed under a '.
-      l(t('Creative Commons License'),
-        $this->uri,
-        array(
-          'attributes' => array('rel' => 'license', 'title' => $this->name),
-        )
-      ) .".\n";
-    $html = "\n<!--Creative Commons License-->\n";
-    if ($site_license)
-      $html .= "<div id=\"ccFooter\">\n";
-
-    // site license header (with copyright year(s))
-    if ($site_license) {
-      if (!$start_year = variable_get('creativecommons_start_year', NULL)) {
-        $start_year = date('Y');
-        variable_set('creativecommons_start_year', $start_year);
-      }
-      $this_year = date('Y');
-      if ($start_year < date('Y'))
-        $copy_years = $start_year .'-'. $this_year;
-      else
-        $copy_years = $start_year;
-      $html .= 'Copyright &copy; '. $copy_years .', Some Rights Reserved<br />';
-    }
-
-    // construct images + links
-    if ($img = $this->get_images($site_license)) {
-      foreach ($img as $img_tag)
-        $html .= l(
-          $img_tag,
-          $this->uri,
-          array(
-            'attributes' => array('rel' => 'license'),
-            'html' => TRUE,
-          )) ."\n";
-      $html .= '<br />';
-    }
-
-    // display site footer text
-    $html .= $txt;
-    if ($site_license) {
-      if ($footer_text = variable_get('creativecommons_site_license_additional_text', NULL))
-        $html .= '<br />'. $footer_text;
-      $html .= "</div>\n";
-    }
-    $html .= "<!--/Creative Commons License-->\n";
-
-    return $html;*/
   }
 
 
@@ -598,32 +544,6 @@ class creativecommons_license {
       }
       //TODO: check for error here?
       return $result;
-    }
-  }
-
-  /**
-   * Output license information for web.
-   */
-  function output($additional_text = '') {
-    // Check for empty license
-    if ($this->has_license()) {
-      $output = "\n<!--Creative Commons License-->\n".
-
-      // HTML output
-      $output .= $this->get_html();
-
-      // Additional text
-      if ($additional_text) {
-        $output .= '<br/>'. $additional_text;
-      }
-
-      // RDF output
-      if (variable_get('creativecommons_rdf', TRUE)) {
-        $output .= "\n<!-- ". $this->get_rdf() ." -->\n";
-      }
-
-      $output .= "<!--/Creative Commons License-->\n";
-      return $output;
     }
   }
 }

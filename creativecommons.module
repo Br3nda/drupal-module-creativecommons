@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.50 2009/08/17 02:22:42 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.51 2009/08/17 05:05:53 balleyne Exp $
 
 /**
  * @file
@@ -29,7 +29,6 @@
 //TODO: dummy function to translate CC API strings? or use API locale?
 //TODO: node license block still displays if permission denied to view node...
 //TODO: 2.x many different errors displayed if API inaccessible, including some false (e.g. invalid licenses when really valid)
-//TODO: sort license list according to freedom http://creativecommons.org/learn/licenses/
 
 define('CC_API_ROOT', 'http://api.creativecommons.org/rest/1.5');
 define('CC_SAMPLE_LICENSE_URI', 'http://creativecommons.org/licenses/by/3.0/us/');
@@ -162,6 +161,17 @@ function creativecommons_settings() {
   //TODO: add license name option (full, generic, short)
 
   $cc = creativecommons_get_sample_license();
+  
+  $text_style_keys = array('full', 'generic', 'short');
+  foreach ($text_style_keys as $style) {
+    $text_styles[$style] = ucwords($style) .', e.g. '. $cc->get_name($style);
+  }
+  $form['creativecommons_display']['creativecommons_text_style'] = array(
+    '#type' => 'radios',
+    '#title' => t('License text style'),
+    '#options' => $text_styles,
+    '#default_value' => variable_get('creativecommons_text_style', 'full'),
+  );
 
   $image_style_keys = array('button_large', 'button_small', 'icons');
   foreach ($image_style_keys as $style) {
@@ -733,6 +743,9 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
     }
   }
 
+  // Sort licenses by freedom
+  uksort($licenses[t('Creative Commons')], 'creativecommons_license_sort');
+
   // CC0
   $zero = new creativecommons_license('http://creativecommons.org/publicdomain/zero/1.0/');
 
@@ -742,6 +755,30 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
     $licenses[t('Public Domain')][$zero->uri] = $zero->get_name();
 
   return $licenses;
+}
+
+/**
+ * Sort function. Licenses weighted by permissiveness.
+ */
+function creativecommons_license_sort($x, $y) {
+  $order = array(
+    'zero' => 0,
+    'publicdomain' => 1,
+    'by' => 2,
+    'by-sa' => 3,
+    'by-nd' => 4,
+    'by-nc' => 5,
+    'by-nc-sa' => 6,
+    'by-nc-nd' => 7,
+  );
+  
+  // Need to extract types
+  if (strpos($x, 'http') !== FALSE) {
+    $x = creativecommons_get_license_type_from_uri($x);
+    $y = creativecommons_get_license_type_from_uri($y);
+  }
+  
+  return $order[$x] - $order[$y];
 }
 
 
@@ -893,7 +930,7 @@ function creativecommons_api_request($uri, $headers = array(), $method = 'GET', 
  * $hrs		file should be updated if older then X number of hours
  * $update	force update of the file
  */
-function creativecommons_return_xml($uri, $hrs = 0, $update = FALSE) {
+function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
   // check for xml variable
   $xml = variable_get('creativecommons_api_'. $uri, NULL);
   if ($xml) {
@@ -1155,10 +1192,16 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
       creativecommons_delete($node);
       break;
 
-    //TODO: review
     case 'rss item':
-      if ($item_license = creativecommons_xml($node))
-        return $item_license;
+      //TODO: move xmlns declarations to top of file...
+      if ($node->cc && $node->cc->is_available() && $node->cc->has_license()) {
+        $return = array();
+        $return[] = array('key' => 'creativeCommons:license', 'value' => $node->cc->uri, 'attributes' => array('xmlns:creativeCommons' => 'http://backend.userland.com/creativeCommonsRssModule'));
+        if (creativecommons_metadata_is_available('morePermissions') && $node->cc->metadata['morePermissions']) {
+          $return[] = array('key' => 'cc:morePermissions', 'value' => $node->cc->metadata['morePermissions'], 'attributes' => array('xmlns:cc' => 'http://creativecommons.org/ns#'));
+        }
+        return $return;
+      }
       break;
   }
   return $output;
@@ -1505,18 +1548,6 @@ function creativecommons_node_type_submit($form, &$form_state) {
 }
 
 /**
- * Append Creative Commons license to an RSS <item> node
- */
-function creativecommons_xml($node) {
-  if ($node->cc) {
-    return array(
-      array('key' => 'xmlns:creativeCommons', 'value' => $node->cc->uri)
-    );
-  }
-  return;
-}
-
-/**
  * Append rdf content to node. TODO: 2.x RDF/XML is no longer recommended by CC
  */
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
@@ -1600,8 +1631,25 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
           case 1:
             if (variable_get('creativecommons_site_license_display', FALSE)) {
               $cc = creativecommons_get_site_license();
-              if ($cc->is_available()) {
-                $block['content'] =  $cc->output(variable_get('creativecommons_site_license_additional_text', ''));
+              if ($cc->is_available() && $cc->has_license()) {
+                $output = "\n<!--Creative Commons Site License-->\n".
+
+                // HTML output
+                $output .= $cc->get_html(TRUE);
+
+                // Additional text
+                if ($additional_text = variable_get('creativecommons_site_license_additional_text', '')) {
+                  $output .= '<br/>'. $additional_text;
+                }
+
+                // RDF output
+                if (variable_get('creativecommons_rdf', TRUE)) {
+                  $output .= "\n<!-- ". $cc->get_rdf() ." -->\n";
+                }
+
+                $output .= "<!--/Creative Commons Site License-->\n";
+
+                $block['content'] = $output;
                 $block['subject'] = 'Site License';
               }
               return $block;
