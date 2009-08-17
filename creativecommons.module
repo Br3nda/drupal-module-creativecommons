@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.51 2009/08/17 05:05:53 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.52 2009/08/17 16:42:26 balleyne Exp $
 
 /**
  * @file
@@ -749,10 +749,12 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   // CC0
   $zero = new creativecommons_license('http://creativecommons.org/publicdomain/zero/1.0/');
 
-  if ($value_as_type)
+  if ($value_as_type) {
     $licenses[t('Public Domain')][$zero->type] = creativecommons_generic_license_name($zero->get_name());
-  else
+  }
+  else {
     $licenses[t('Public Domain')][$zero->uri] = $zero->get_name();
+  }
 
   return $licenses;
 }
@@ -836,15 +838,21 @@ function creativecommons_get_available_license_list($options = NULL, $value_as_t
  */
 function creativecommons_remove_unavailable_licenses($list, $available_license_types = NULL) {
 
-  if (!$available_license_types)
+  if (!$available_license_types) {
     $available_license_types = creativecommons_get_available_license_types();
+  }
 
   foreach ($list as $key => $value) {
     if (is_array($value)) {
-      $list[$key] = creativecommons_remove_unavailable_licenses(&$value, $available_license_types);
+      $list[$key] = creativecommons_remove_unavailable_licenses($value, $available_license_types);
     }
-    elseif (!in_array($key, $available_license_types) && !in_array(creativecommons_get_license_type_from_uri($key), $available_license_types))
+    elseif (
+      !(
+        in_array($key, $available_license_types)
+        || (strpos($key, 'http')===0 && in_array(creativecommons_get_license_type_from_uri($key), $available_license_types))
+      )) {
       unset($list[$key]);
+    }
   }
 
   return $list;
