@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.34 2009/08/17 18:52:56 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.35 2009/08/19 20:28:22 turadg Exp $
 
 /**
  * @file
@@ -322,6 +322,20 @@ class creativecommons_license {
   }
 
   /**
+   *
+   * @return string
+   *   error message for invalid or disabled license
+   */
+  function get_license_unavailable_message() {
+    $args = array('@license-name' => $this->get_name());
+    if ($this->is_valid()) {
+      return t('The license "@license-name" is not enabled.', $args);
+    } else {
+      return t('"@license-name" is not a valid license.', $args);
+    }
+  }
+
+  /**
    * Return true if this license allows commercial use, false otherwise.
    */
   function permits_commercial_use() {
@@ -512,7 +526,7 @@ class creativecommons_license {
       drupal_set_message(t('A node must be specified to save a license.'), 'error');
     }
     else if (!$this->is_available()) {
-      $message = t('The %license-name license is not enabled.', array('%license-name', $this->get_name()));
+      $message = $this->get_license_unavailable_message();
       drupal_set_message($message, 'error');
     }
     else {

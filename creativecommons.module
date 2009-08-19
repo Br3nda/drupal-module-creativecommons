@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.53 2009/08/17 18:52:56 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.54 2009/08/19 20:28:22 turadg Exp $
 
 /**
  * @file
@@ -249,9 +249,7 @@ function creativecommons_site_defaults() {
 
   // Check to see if default license is still enabled
   if ($cc && $cc->has_license() && !$cc->is_available()) {
-    $args = array();
-    $args['%license-name'] = $cc->get_name();
-    $message = $cc->is_valid() ? t('The %license-name license is not enabled.', $args) : t('%license-name is not a valid license.', $args);
+    $message = $cc->get_license_unavailable_message();
     drupal_set_message($message, 'warning');
   }
 
@@ -487,14 +485,15 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
 
     // Case 1: License is no longer available
     if (!$desired_license->is_available()) {
-      $message = t('The %license-name license is not enabled.', array('%license-name' => $desired_license->get_name('generic'))) .' '. t('Please review license selection.');
+      $args = array('@license-name' => $desired_license->get_name('generic'));
+      $message = t('The @license-name license is not enabled.', $args) .' '. t('Please review license selection.');
     }
     // Case 2: Jurisdiction change (same license type)
     elseif ($desired_license->jurisdiction != $selected_license->jurisdiction) {
       $args = array();
-      $args['%old-jurisdiction'] = $jurisdictions[$desired_license->jurisdiction];
-      $args['%new-jurisdiction'] = $jurisdictions[$selected_license->jurisdiction];
-      $message = t('License jurisdiction will be changed from %old-jurisdiction to %new-jurisdiction.', $args) .' '. t('Please review license selection.');
+      $args['@old-jurisdiction'] = $jurisdictions[$desired_license->jurisdiction];
+      $args['@new-jurisdiction'] = $jurisdictions[$selected_license->jurisdiction];
+      $message = t('License jurisdiction will be changed from @old-jurisdiction to @new-jurisdiction.', $args) .' '. t('Please review license selection.');
     }
     // Case 3: Version change (upgrade)
     elseif ($desired_license->version != $selected_license->version) {
@@ -551,10 +550,7 @@ function creativecommons_validate_license_uri($license_uri_key, $license_uri) {
   // Check to see if selected license is available
   $cc = new creativecommons_license($license_uri);
   if ($cc->has_license() && !$cc->is_available()) {
-    $args = array();
-    $args['%license-name'] = $cc->get_name();
-    $message = $cc->is_valid() ? t('The %license-name license is not enabled.', $args) : t('%license-name is not a valid license.', $args);
-
+    $message = $cc->get_license_unavailable_message();
     form_set_error($license_uri_key, $message);
   }
 }
