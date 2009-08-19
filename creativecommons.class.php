@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.36 2009/08/19 20:32:35 turadg Exp $
+// $Id: creativecommons.class.php,v 1.3.4.37 2009/08/19 20:42:55 turadg Exp $
 
 /**
  * @file
@@ -525,56 +525,62 @@ class creativecommons_license {
    */
   function save($nid, $op) {
     if (!$nid) {
-      drupal_set_message(t('A node must be specified to save a license.'), 'error');
+      drupal_set_message(t('CC license could not be saved due to missing node argument.'), 'error');
+      return;
     }
-    else if (!$this->is_available()) {
+
+    if (!$this->is_available()) {
+      // note in log, but only once
       $message = $this->get_license_unavailable_message();
-      drupal_set_message($message, 'error');
+      drupal_set_message($message, 'error', FALSE);
+      // continue, since the availability is to the user, not to code.
+      // if this code got called, there was a reason.  user validation
+      // happens elsewhere.
     }
-    else {
-      switch ($op) {
-          case 'update':
-            // This check exists in case an entry doesn't yet exist for the node
-            // (for example, if a node was created before the CC module was
-            // setup for that content type)
-            $exists = FALSE;
-            $check_result = db_query('SELECT COUNT(*) as count FROM {creativecommons_node} WHERE nid=%d', $nid);
-            if ($check_result) {
-              $row = db_fetch_object($check_result);
-              if ($row->count == 1) {
-                $exists = TRUE;
-              }
-            }
-            if ($exists) {
-              $args = array($this->uri);
-              $fields = array("license_uri='%s'");
-              foreach ($this->metadata as $key => $value) {
-                $fields[] = $key ."='%s'";
-                $args[] = $value;
-              }
-              $args[] = $nid;
-              $query = 'UPDATE {creativecommons_node} SET '. implode(', ', $fields) .' WHERE nid=%d';
-              $args = array_merge(array($query), $args);
-              $result = call_user_func_array('db_query', $args);
-              break;
+
+    switch ($op) {
+      case 'update':
+        // This check exists in case an entry doesn't yet exist for the node
+        // (for example, if a node was created before the CC module was
+        // setup for that content type)
+        $exists = FALSE;
+        $check_result = db_query('SELECT COUNT(*) as count FROM {creativecommons_node} WHERE nid=%d', $nid);
+        if ($check_result) {
+          $row = db_fetch_object($check_result);
+          if ($row->count == 1) {
+            $exists = TRUE;
           }
-          // otherwise, insert
-        case 'insert':
-          $args = array($nid, $this->uri);
-          $fields = array('nid', 'license_uri');
-          $values = array('%d', "'%s'");
+        }
+        if ($exists) {
+          $args = array($this->uri);
+          $fields = array("license_uri='%s'");
           foreach ($this->metadata as $key => $value) {
-            $fields[] = $key;
-            $values[] = "'%s'";
+            $fields[] = $key ."='%s'";
             $args[] = $value;
           }
-          $query = 'INSERT INTO {creativecommons_node} ('. implode(', ', $fields) .') VALUES ('. implode(', ', $values) .')';
+          $args[] = $nid;
+          $query = 'UPDATE {creativecommons_node} SET '. implode(', ', $fields) .' WHERE nid=%d';
           $args = array_merge(array($query), $args);
           $result = call_user_func_array('db_query', $args);
           break;
-      }
-      //TODO: check for error here?
-      return $result;
+        }
+        // otherwise, insert
+      case 'insert':
+        $args = array($nid, $this->uri);
+        $fields = array('nid', 'license_uri');
+        $values = array('%d', "'%s'");
+        foreach ($this->metadata as $key => $value) {
+          $fields[] = $key;
+          $values[] = "'%s'";
+          $args[] = $value;
+        }
+        $query = 'INSERT INTO {creativecommons_node} ('. implode(', ', $fields) .') VALUES ('. implode(', ', $values) .')';
+        $args = array_merge(array($query), $args);
+        $result = call_user_func_array('db_query', $args);
+        break;
     }
+    //TODO: check for error here?
+    return $result;
   }
 }
+
