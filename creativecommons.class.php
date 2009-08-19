@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.35 2009/08/19 20:28:22 turadg Exp $
+// $Id: creativecommons.class.php,v 1.3.4.36 2009/08/19 20:32:35 turadg Exp $
 
 /**
  * @file
@@ -48,10 +48,7 @@ class creativecommons_license {
     // Otherwise, load from parameters
     else {
       $this->uri = $license_uri;
-
-      if ($metadata) {
-        $this->metadata = $metadata;
-      }
+      $this->metadata = $metadata;
     }
 
     // Fetch license information if uri present
@@ -62,6 +59,11 @@ class creativecommons_license {
     else {
       $this->name = t('None (All Rights Reserved)');
       $this->type = '';
+    }
+
+    if (empty($this->metadata)) {
+      // ensure metadata is an array
+      $this->metadata = array();
     }
   }
 
