@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.37 2009/08/19 20:42:55 turadg Exp $
+// $Id: creativecommons.class.php,v 1.3.4.38 2009/08/23 03:08:22 turadg Exp $
 
 /**
  * @file
@@ -39,17 +39,9 @@ class creativecommons_license {
   /**
    * Initialize object
    */
-  function __construct($license_uri, $nid = NULL, $metadata = array()) {
-    // If nid set, load from databases
-    if ($nid) {
-      $this->nid = $nid;
-      $this->load();
-    }
-    // Otherwise, load from parameters
-    else {
-      $this->uri = $license_uri;
-      $this->metadata = $metadata;
-    }
+  function __construct($license_uri, $metadata = array()) {
+    $this->uri = $license_uri;
+    $this->metadata = $metadata;
 
     // Fetch license information if uri present
     if ($this->uri) {
@@ -71,21 +63,21 @@ class creativecommons_license {
   /**
    * Load from database into object.
    */
-  function load() {
-    if ($this->nid) {
-      $result = db_query("SELECT * FROM {creativecommons_node} cc WHERE cc.nid = %d", $this->nid);
-      if ($row = db_fetch_object($result)) {
-        $this->uri = $row->license_uri;
+  static function for_node($nid) {
+    $result = db_query("SELECT * FROM {creativecommons_node} cc WHERE cc.nid = %d", $nid);
+    if ($row = db_fetch_object($result)) {
+      $uri = $row->license_uri;
 
-        $this->metadata = array();
-        foreach ($row as $key => $value) {
-          // Only load available metadata
-          if ($key != 'license_uri' && $key != 'nid' && creativecommons_metadata_is_available($key)) {
-            $this->metadata[$key] = $value;
-          }
+      $metadata = array();
+      foreach ($row as $key => $value) {
+        // Only load available metadata
+        // TODO why not load it all? admin should be able use all
+        if ($key != 'license_uri' && $key != 'nid' && creativecommons_metadata_is_available($key)) {
+          $metadata[$key] = $value;
         }
       }
     }
+    return new creativecommons_license($uri, $metadata);
   }
 
   /**

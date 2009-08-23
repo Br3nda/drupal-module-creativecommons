@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.56 2009/08/23 02:42:53 turadg Exp $
+// $Id: creativecommons.module,v 1.9.2.57 2009/08/23 03:08:22 turadg Exp $
 
 /**
  * @file
@@ -574,7 +574,7 @@ function creativecommons_get_default_license($jurisdiction = NULL) {
  */
 function creativecommons_get_site_license() {
   $license_uri = creativecommons_get_default_license_uri();
-  return new creativecommons_license($license_uri, NULL, variable_get('creativecommons_site_metadata', array()));
+  return new creativecommons_license($license_uri, variable_get('creativecommons_site_metadata', array()));
 }
 /**
  * Return default license URI.
@@ -1179,7 +1179,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
     // settings   'form post replaced by form_api
     case 'load':
       if (creativecommons_node_type_is_enabled($node->type))
-        $node->cc = new creativecommons_license('', $node->nid);
+        $node->cc = creativecommons_license::for_node($node->nid);
       break;
 
     case 'view':
@@ -1834,25 +1834,16 @@ function creativecommons_node_form_validate($form, &$form_state) {
  * Save license/node relationship in database
  */
 function creativecommons_save($node, $op) {
-
   //TODO: shouldn't be using $_POST... what's the drupal way to do this? use submit instead?
-  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], NULL, $_POST['creativecommons']['metadata']);
+  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], $_POST['creativecommons']['metadata']);
   $cc->save($node->nid, $op);
-
-  //TODO: is this line necessary? should it be somewhere else?
-  $node->cc = $cc;
-
-  return;
 }
 
 /**
  * Delete node/license relationship from database
  */
 function creativecommons_delete($node) {
-  if ($node->nid) {
-    db_query("DELETE FROM {creativecommons_node} WHERE nid = %d", $node->nid);
-  }
-  return;
+  db_query("DELETE FROM {creativecommons_node} WHERE nid = %d", $node->nid);
 }
 
 
@@ -1874,10 +1865,8 @@ function creativecommons_node_type_is_enabled($type) {
  */
 function creativecommons_count_by_license_type($type) {
   $result = db_query("SELECT COUNT(*) as count FROM {creativecommons_node} WHERE license_uri LIKE 'http://creativecommons.org/%/%s/%'", $type);
-  if ($result) {
-    $row = db_fetch_object($result);
-    return $row->count;
-  }
+  $row = db_fetch_object($result);
+  return $row->count;
 }
 
 /**
@@ -1981,10 +1970,8 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
           );
         }
       }
-
-
-
       return $form;
+
     case 'update':
     case 'insert':
       // Delete old entry from database
