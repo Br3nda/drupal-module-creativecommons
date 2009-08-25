@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.58 2009/08/25 11:39:34 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.59 2009/08/25 14:17:48 balleyne Exp $
 
 /**
  * @file
@@ -1728,14 +1728,14 @@ function creativecommons_node_form($node, $form_state) {
   // Check for non-empty fields if preview mode
   if (!$show_meta && is_array($form_state['values']['creativecommons']['metadata'])) {
     foreach ($form_state['values']['creativecommons']['metadata'] as $key => $value) {
-      if ($value) {
+      if ($value && creativecommons_metadata_is_available($key)) {
         $show_meta = TRUE;
         break;
       }
     }
   }
   // Check for stored non-empty fields if not in preview mode
-  else if ($node->cc && $node->cc->has_metadata()) {
+  else if ($node->cc && $node->cc->has_available_metadata()) {
     $show_meta = TRUE;
   }
 

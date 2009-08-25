@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.38 2009/08/23 03:08:22 turadg Exp $
+// $Id: creativecommons.class.php,v 1.3.4.39 2009/08/25 14:17:49 balleyne Exp $
 
 /**
  * @file
@@ -68,16 +68,17 @@ class creativecommons_license {
     if ($row = db_fetch_object($result)) {
       $uri = $row->license_uri;
 
+      // Load metadata
       $metadata = array();
       foreach ($row as $key => $value) {
-        // Only load available metadata
-        // TODO why not load it all? admin should be able use all
-        if ($key != 'license_uri' && $key != 'nid' && creativecommons_metadata_is_available($key)) {
+        if ($key != 'license_uri' && $key != 'nid') {
           $metadata[$key] = $value;
         }
       }
+      $cc = new creativecommons_license($uri, $metadata);
+      $cc->nid = $row->nid;
     }
-    return new creativecommons_license($uri, $metadata);
+    return $cc;
   }
 
   /**
@@ -282,6 +283,21 @@ class creativecommons_license {
     }
     return FALSE;
   }
+  
+  /**
+   * Returns true if any available metadata fields are non-blank, false otherwise.
+   */
+  function has_available_metadata() {
+    if ($this->metadata) {
+      foreach ($this->metadata as $key => $value) {
+        if (!empty($value) && creativecommons_metadata_is_available($key)) {
+          return TRUE;
+        }
+      }
+    }
+    return FALSE;
+  }
+  
   /**
    * Returns true if license set, false otherwise.
    */
@@ -385,54 +401,58 @@ class creativecommons_license {
     $args = array(
       '@license-name' => $this->get_name(variable_get('creativecommons_text_style', 'full')),
       '@license-uri' => $this->uri,
-      '@dc:type-uri' => 'http://purl.org/dc/dcmitype/'. ($this->metadata['type'] ? $this->metadata['type'] : ''),
-      '@dc:type-name' => $this->metadata['type'] ? drupal_strtolower($dcmi_types[$this->metadata['type']]) : t('Work'),
-      '%dc:title' => $this->metadata['title'] ? $this->metadata['title'] : $default_title,
-      '@cc:attributionName' => $this->metadata['attributionName'] ? $this->metadata['attributionName'] : $default_name,
-      '@cc:attributionURL' => $this->metadata['attributionURL'] ? $this->metadata['attributionURL'] : $default_attributionURL,
+      '@dc:type-uri' => 'http://purl.org/dc/dcmitype/'. ($this->metadata['type'] && creativecommons_metadata_is_available('type') ? $this->metadata['type'] : ''),
+      '@dc:type-name' => $this->metadata['type'] && creativecommons_metadata_is_available('type') ? drupal_strtolower($dcmi_types[$this->metadata['type']]) : t('Work'),
+      '@dc:title' => $this->metadata['title'] && creativecommons_metadata_is_available('title') ? $this->metadata['title'] : $default_title,
+      '@cc:attributionName' => $this->metadata['attributionName'] && creativecommons_metadata_is_available('attributionName') ? $this->metadata['attributionName'] : $default_name,
+      '@cc:attributionURL' => $this->metadata['attributionURL'] && creativecommons_metadata_is_available('attributionURL') ? $this->metadata['attributionURL'] : $default_attributionURL,
     );
 
     // Site license, no attribution name
-    if ($site && !$this->metadata['attributionName']) {
+    if ($site && (!$this->metadata['attributionName'] || !creativecommons_metadata_is_available('attributionName'))) {
       // CC0
       if ($this->type == 'zero') {
-        $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">%dc:title</a>, have been waived.', $args);
+        $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">@dc:title</a>, have been waived.', $args);
       }
       // Rest
       else {
-        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">%dc:title</a>, is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);
+        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">@dc:title</a>, is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);
       }
     }
     // Otherwise
     else {
       // CC0
       if ($this->type == 'zero') {
-        $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> have been waived.', $args);
+        $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">@dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> have been waived.', $args);
       }
       // Rest
       else {
-        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">%dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);
+        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">@dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> is licensed under a <a rel="license" href="@license-uri">@license-name license</a>.', $args);
       }
     }
 
     // dc:source
-    if ($this->metadata['source']) {
+    if ($this->metadata['source'] && creativecommons_metadata_is_available('source')) {
       $html .= '<span rel="dc:source" href="'. check_plain($this->metadata['source']) .'"/>';
     }
 
     // CC+
-    if ($this->metadata['morePermissions']) {
+    if ($this->metadata['morePermissions'] && creativecommons_metadata_is_available('morePermissions')) {
       $html .= ' '. t('There are <a rel="cc:morePermissions" href="@cc:morePermissions">alternative licensing options</a> available.', array('@cc:morePermissions' => $this->metadata['morePermissions']));
     }
 
     // dc:description
-    if ($this->metadata['description']) {
+    if ($this->metadata['description'] && creativecommons_metadata_is_available('description')) {
       $html .= '<p>'. t('<span property="dc:description">@dc:description</span>', array('@dc:description' => $this->metadata['description'])) .'</p>';
     }
 
     // dc:year
-    if ($this->metadata['date'] || $this->metadata['rights']) {
-      $html .= '<p>'. t('Copyright &copy; <span property="dc:date">@dc:date</span> <span property="dc:rights">@dc:rights</span>.', array('@dc:date' => $this->metadata['date'], '@dc:rights' => $this->metadata['rights'])) .'</p>';
+    if (($this->metadata['date'] && creativecommons_metadata_is_available('date')) || ($this->metadata['rights'] && creativecommons_metadata_is_available('date'))) {
+      $args = array(
+        '@dc:date' => creativecommons_metadata_is_available('date') ? $this->metadata['date'] : '',
+        '@dc:rights' => creativecommons_metadata_is_available('rights') ? $this->metadata['rights'] : '',
+      );
+      $html .= '<p>'. t('Copyright &copy; <span property="dc:date">@dc:date</span> <span property="dc:rights">@dc:rights</span>', $args) .'</p>';
     }
 
 
@@ -462,9 +482,9 @@ class creativecommons_license {
 
     // metadata
     $rdf .= "<work rdf:about=\"". url('node/'. $this->nid, array('absolute' => TRUE)) ."\">\n";
-    if ($this->has_metadata()) {
+    if ($this->has_available_metadata()) {
       foreach ($this->metadata as $key => $value) {
-        if ($value) {
+        if ($value && creativecommons_metadata_is_available($key)) {
           $ns = 'dc';
 
           switch ($key) {
