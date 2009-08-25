@@ -1,4 +1,4 @@
-/* $Id: README.txt,v 1.1.2.3 2009/08/17 18:52:56 balleyne Exp $ */
+/* $Id: README.txt,v 1.1.2.4 2009/08/25 15:09:30 balleyne Exp $ */
 
 -- SUMMARY --
 
@@ -69,13 +69,17 @@ None.
 Current maintainers:
 * Blaise Alleyne (balleyne) - http://drupal.org/user/362044
 * Kevin Reynen (kreynen) - http://drupal.org/user/48877
+* Turadg Aleahmad (turadg) - http://drupal.org/user/463154
 
 Initial development done by Kevin Reynen (kreynen). Rewrite for Drupal 6 
 by Blaise Alleyne (balleyne) as part of the Google Summer of Code 2009.
 
 This project has been sponsored by:
-* Google
-  A project to update and expand the module for Drupal 6 was part of the Google
-  Summer of Code 2009
+* Google - http://www.google.com/
+  A project to update and expand the module for Drupal 6 was completed by Blaise
+  Alleyne as part of the Google Summer of Code 2009
+  
+* Alleyne Inc. - http://www.alleyneinc.net/
+  Alleyne Inc. sponsors Blaise's development beyond the Google Summer of Code.
 
 
