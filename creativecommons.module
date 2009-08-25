@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.57 2009/08/23 03:08:22 turadg Exp $
+// $Id: creativecommons.module,v 1.9.2.58 2009/08/25 11:39:34 balleyne Exp $
 
 /**
  * @file
@@ -1230,7 +1230,7 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
   elseif (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
     $node = $form['#node'];
     if (creativecommons_node_type_is_enabled($node->type)) {
-      $form = array_merge($form, creativecommons_node_form($form['#node'], $form_state));
+      $form = array_merge_recursive($form, creativecommons_node_form($form['#node'], $form_state));
     }
   }
   // Add search fields to Content search form
