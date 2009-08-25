@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.actions.inc,v 1.1.2.1 2009/08/23 03:07:35 turadg Exp $
+// $Id: creativecommons.actions.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne Exp $
 /**
  * @file
  * Example Action Implementation.
@@ -49,7 +49,7 @@ function creativecommons_set_license_action(&$node, $context) {
  * @return $form
  */
 function creativecommons_set_license_action_form($context) {
-  $form = creativecommons_node_form(null, null);
+  $form = creativecommons_node_form(NULL, NULL);
   return $form;
 }
 

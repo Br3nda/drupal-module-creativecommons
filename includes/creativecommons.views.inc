@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.views.inc,v 1.1.2.1 2009/08/17 18:52:56 balleyne Exp $
+// $Id: creativecommons.views.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne Exp $
 /**
  * @file
  * Provide views data and handler information for creativecommons.module.
@@ -7,8 +7,10 @@
 
 //TODO: sort license_uri (by permissiveness)
 //TODO: filter license_uri by type
-//TODO: refine metadata, ccREL (e.g. combine attribution name / url)
-//TODO: should metadata handlers still be defined if metadata unavailable?
+//TODO: make sure license is available, and is not blank (filter?); don't show blank licenses in default view
+//TODO: refine metadata, ccREL
+//TODO: move all metdata availability checks into handlers, so that admins can optionally load unavailable metadata into a View (set option, with default as 'only display if available' set to true)
+//  - Create generic metadata handlers with this functionality that can then be extended for further customization...
 
 /**
  * Implementation of hook_views_data().
@@ -56,7 +58,19 @@ function creativecommons_views_data() {
     ),
   );
 
-  foreach (creativecommons_get_metadata_types() as $key => $value) {
+  $data['creativecommons_node']['attribution'] = array(
+    'title' => t('Attribution'), // Appears in views UI.
+    'help' => t('The name and/or URL the creator of a work would like used when attributing re-use.'), // description based on creativecommons.org/ns
+    'field' => array(
+      'handler' => 'creativecommons_views_handler_field_attribution',
+      'click sortable' => TRUE,
+    ),
+  );
+
+  // Get all metadata types
+  $metadata_types = creativecommons_get_metadata_types();
+
+  foreach ($metadata_types as $key => $value) {
     if (creativecommons_metadata_is_available($key)) {
       $url_fields = array('attributionURL', 'morePermissions', 'source');
       $field = in_array($key, $url_fields) ? 'views_handler_field_url' : 'views_handler_field';
@@ -89,6 +103,9 @@ function creativecommons_views_handlers() {
       ),
       // field handlers
       'creativecommons_views_handler_field_license_uri' => array(
+        'parent' => 'views_handler_field_url',
+      ),
+      'creativecommons_views_handler_field_attribution' => array(
         'parent' => 'views_handler_field_url',
       ),
       // filter handlers

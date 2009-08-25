@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.39 2009/08/25 14:17:49 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.40 2009/08/25 15:14:09 balleyne Exp $
 
 /**
  * @file
@@ -23,6 +23,7 @@
 //TODO: 2.x PHP5 (useful for license types? http://us3.php.net/manual/en/language.oop5.late-static-bindings.php)
 //TODO: error handling http://api.creativecommons.org/docs/readme_15.html#error-handling
 //TODO: 2.x optimize by storing values when functions are called (e.g. is_valid, is_available)?
+//TODO: Move Drupal default metadata checking form get_html to separate function, so that the Views API and other functions can use it too (e.g. user_load, node_load stuff)
 class creativecommons_license {
   // license attributes
   var $uri;
@@ -283,7 +284,7 @@ class creativecommons_license {
     }
     return FALSE;
   }
-  
+
   /**
    * Returns true if any available metadata fields are non-blank, false otherwise.
    */
@@ -297,7 +298,7 @@ class creativecommons_license {
     }
     return FALSE;
   }
-  
+
   /**
    * Returns true if license set, false otherwise.
    */
@@ -340,7 +341,8 @@ class creativecommons_license {
     $args = array('@license-name' => $this->get_name());
     if ($this->is_valid()) {
       return t('The license "@license-name" is not enabled.', $args);
-    } else {
+    }
+    else {
       return t('"@license-name" is not a valid license.', $args);
     }
   }

@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.views_default.inc,v 1.1.2.1 2009/08/17 18:52:56 balleyne Exp $
+// $Id: creativecommons.views_default.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne Exp $
 
 /**
  * @file
@@ -54,11 +54,11 @@ function creativecommons_views_default_views() {
       'field' => 'title',
       'relationship' => 'none',
     ),
-    'name' => array(
-      'label' => '',
+    'attribution' => array(
+      'label' => 'by',
       'alter' => array(
-        'alter_text' => 1,
-        'text' => 'by [name]',
+        'alter_text' => 0,
+        'text' => '',
         'make_link' => 0,
         'path' => '',
         'link_class' => '',
@@ -73,13 +73,11 @@ function creativecommons_views_default_views() {
         'strip_tags' => 0,
         'html' => 0,
       ),
-      'link_to_user' => 1,
-      'overwrite_anonymous' => 0,
-      'anonymous_text' => '',
+      'display_as_link' => 1,
       'exclude' => 0,
-      'id' => 'name',
-      'table' => 'users',
-      'field' => 'name',
+      'id' => 'attribution',
+      'table' => 'creativecommons_node',
+      'field' => 'attribution',
       'relationship' => 'none',
     ),
     'license_uri_1' => array(
@@ -183,7 +181,6 @@ function creativecommons_views_default_views() {
     'description' => '',
     'weight' => 0,
   ));
-
 
   $views[$view->name] = $view;
 
