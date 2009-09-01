@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.59 2009/08/25 14:17:48 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.60 2009/09/01 01:31:50 turadg Exp $
 
 /**
  * @file
@@ -665,6 +665,7 @@ function creativecommons_get_jurisdiction_name($key) {
   $jurisdictions = creativecommons_get_jurisdictions();
   return $jurisdictions[$key];
 }
+
 /**
  * Take the raw array of jurisdictions from the CC API and format it for use in
  * a Drupal form by flipping keys/values, and sorting by Jurisdiction name
@@ -1616,7 +1617,7 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
       switch ($delta) {
         // Node license
         case 'node_license':
-        case 0: // for backward-compatibility
+        case '0': // for backward-compatibility
 
           if (!is_numeric(arg(1))) {
             return;
@@ -1635,7 +1636,8 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
 
         // Site license
         case 'site_license':
-        case 1: // for backward-compatibility
+        case '1': // for backward-compatibility
+
           if (variable_get('creativecommons_site_license_display', FALSE)) {
             $cc = creativecommons_get_site_license();
             if ($cc->is_available() && $cc->has_license()) {
