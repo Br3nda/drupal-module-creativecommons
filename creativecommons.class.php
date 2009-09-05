@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.40 2009/08/25 15:14:09 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.41 2009/09/05 22:16:10 turadg Exp $
 
 /**
  * @file
@@ -225,6 +225,8 @@ class creativecommons_license {
    * @param $style -- either button_large, button_small, icons or tiny_icons
    */
   function get_image($style) {
+    if (empty($this->type)) return;
+
     $img = array();
     $img_dir = base_path() . drupal_get_path('module', 'creativecommons') .'/images';
     $nc = variable_get('creativecommons_nc_img', '');
@@ -368,11 +370,6 @@ class creativecommons_license {
   //TODO: "use an appropriate profile URL in the header of the HTML document" (p. 15, ccREL)
   function get_html($site = FALSE) {
 
-    // must have a license to display html
-    if (!$this->has_license()) {
-      return;
-    }
-
     // Load additional info, used when defaulting to Drupal metadata
     if ($site) {
       $default_title = variable_get('site_name', '');
@@ -426,6 +423,10 @@ class creativecommons_license {
       // CC0
       if ($this->type == 'zero') {
         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">@dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> have been waived.', $args);
+      }
+      else if ($this->type == '') {
+        // None (All Rights Reserved)
+        $html .= t('This <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">@dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> is made available under the <a href="http://www.copyright.gov/fls/fl102.html">fair use doctrine</a>.  All rights reserved.', $args);
       }
       // Rest
       else {
