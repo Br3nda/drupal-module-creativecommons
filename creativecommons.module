@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.60 2009/09/01 01:31:50 turadg Exp $
+// $Id: creativecommons.module,v 1.9.2.61 2009/10/13 18:37:54 balleyne Exp $
 
 /**
  * @file
@@ -206,6 +206,21 @@ function creativecommons_settings() {
     '#default_value' => variable_get('creativecommons_rdf', TRUE),
     '#description' => t('Attach machine-readable license information as RDF/XML within the HTML of a node to let visitors know what license applies to your works.'),
   );
+
+  // This if should only wrap the search option when other options are included here  
+  if (module_exists('search')) {
+    $form['creativecommons_advanced'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Advanced'),
+      '#description' => t('Options for how the Creative Commons module interacts with other Drupal modules.'),
+    );
+
+    $form['creativecommons_advanced']['creativecommons_search'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Creative Commons Search'),
+      '#default_value' => variable_get('creativecommons_search', TRUE),
+    );
+  }
   return system_settings_form($form);
 
 }
@@ -1336,188 +1351,190 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
  * Implementation of hook_search().
  */
 function creativecommons_search($op = 'search', $keys = NULL) {
-  switch ($op) {
-    case 'name':
-      return t('Creative Commons');
-    case 'search':
-      // Extract CC filters from query
-      $cc_search_filters = explode(',', search_query_extract($keys, 'cc'));
+  if (variable_get('creativecommons_search', TRUE)) {
+    switch ($op) {
+      case 'name':
+        return t('Creative Commons');
+      case 'search':
+        // Extract CC filters from query
+        $cc_search_filters = explode(',', search_query_extract($keys, 'cc'));
 
-      // Load available licenses
-      $license_list = creativecommons_get_licenses();
-      $all_licenses = array();
-      $available_licenses = array();
-      $have_available_licenses = FALSE;
-      foreach ($license_list as $class => $licenses) {
-        if (is_array($licenses)) {
-          foreach (array_keys($licenses) as $uri) {
-            $license = new creativecommons_license($uri);
-            $all_licenses[] = $license;
-            if ($license->is_available() && $license->has_license()) {
-              $available_licenses[] = $license;
-              $have_available_licenses = TRUE;
+        // Load available licenses
+        $license_list = creativecommons_get_licenses();
+        $all_licenses = array();
+        $available_licenses = array();
+        $have_available_licenses = FALSE;
+        foreach ($license_list as $class => $licenses) {
+          if (is_array($licenses)) {
+            foreach (array_keys($licenses) as $uri) {
+              $license = new creativecommons_license($uri);
+              $all_licenses[] = $license;
+              if ($license->is_available() && $license->has_license()) {
+                $available_licenses[] = $license;
+                $have_available_licenses = TRUE;
+              }
             }
           }
         }
-      }
 
-      // No results to show, if no CC licenses enabled
-      if (!$have_available_licenses) {
-        drupal_set_message(t('No Creative Commons licenses are enabled.'), 'warning', FALSE);
-        return;
-      }
+        // No results to show, if no CC licenses enabled
+        if (!$have_available_licenses) {
+          drupal_set_message(t('No Creative Commons licenses are enabled.'), 'warning', FALSE);
+          return;
+        }
 
-      # Next for lines from node_search()
-      // Build matching conditions
-      list($join1, $where1) = _db_rewrite_sql();
-      $arguments1 = array();
-      $conditions1 = 'n.status = 1';
-      # end node_search lines
+        # Next for lines from node_search()
+        // Build matching conditions
+        list($join1, $where1) = _db_rewrite_sql();
+        $arguments1 = array();
+        $conditions1 = 'n.status = 1';
+        # end node_search lines
 
-      // Creative Commons search filters
-      $keys = search_query_insert($keys, 'cc');
-      $conditions1 .= " AND cc.license_uri LIKE 'http://creativecommons.org/%'"; // only return CC licensed content
-      $join1 .= ' INNER JOIN {creativecommons_node} cc ON i.sid=cc.nid';
+        // Creative Commons search filters
+        $keys = search_query_insert($keys, 'cc');
+        $conditions1 .= " AND cc.license_uri LIKE 'http://creativecommons.org/%'"; // only return CC licensed content
+        $join1 .= ' INNER JOIN {creativecommons_node} cc ON i.sid=cc.nid';
 
-      // Only search available/enabled licenses
-      $cc_conditions = array();
-      foreach ($available_licenses as $license) {
-        $cc_conditions[] = "cc.license_uri LIKE 'http://creativecommons.org/%/". creativecommons_get_license_type_from_uri($license->uri) ."/%'";
-      }
-      if (!empty($cc_conditions)) {
-        $conditions1 .= ' AND ('. implode(' OR ', $cc_conditions) .')';
-      }
+        // Only search available/enabled licenses
+        $cc_conditions = array();
+        foreach ($available_licenses as $license) {
+          $cc_conditions[] = "cc.license_uri LIKE 'http://creativecommons.org/%/". creativecommons_get_license_type_from_uri($license->uri) ."/%'";
+        }
+        if (!empty($cc_conditions)) {
+          $conditions1 .= ' AND ('. implode(' OR ', $cc_conditions) .')';
+        }
 
-      foreach (array('commercial_use', 'derivative_works') as $filter) {
-        if (in_array($filter, $cc_search_filters)) {
-          $filter_function = 'permits_'. $filter;
-          $cc_conditions = array();
-          foreach ($all_licenses as $license) {
-            if ($license->$filter_function()) {
-              $cc_conditions[] = "cc.license_uri LIKE 'http://creativecommons.org/%/". creativecommons_get_license_type_from_uri($license->uri) ."/%'";
+        foreach (array('commercial_use', 'derivative_works') as $filter) {
+          if (in_array($filter, $cc_search_filters)) {
+            $filter_function = 'permits_'. $filter;
+            $cc_conditions = array();
+            foreach ($all_licenses as $license) {
+              if ($license->$filter_function()) {
+                $cc_conditions[] = "cc.license_uri LIKE 'http://creativecommons.org/%/". creativecommons_get_license_type_from_uri($license->uri) ."/%'";
+              }
+            }
+            if (!empty($cc_conditions)) {
+              $conditions1 .= ' AND ('. implode(' OR ', $cc_conditions) .')';
             }
           }
-          if (!empty($cc_conditions)) {
-            $conditions1 .= ' AND ('. implode(' OR ', $cc_conditions) .')';
+        }
+
+        /**
+         * The rest of the code for this case has been copied from node_search(),
+         * with the exception of one line to add the CC license into the title text.
+         */
+        if ($type = search_query_extract($keys, 'type')) {
+          $types = array();
+          foreach (explode(',', $type) as $t) {
+            $types[] = "n.type = '%s'";
+            $arguments1[] = $t;
           }
+          $conditions1 .= ' AND ('. implode(' OR ', $types) .')';
+          $keys = search_query_insert($keys, 'type');
         }
-      }
 
-      /**
-       * The rest of the code for this case has been copied from node_search(),
-       * with the exception of one line to add the CC license into the title text.
-       */
-      if ($type = search_query_extract($keys, 'type')) {
-        $types = array();
-        foreach (explode(',', $type) as $t) {
-          $types[] = "n.type = '%s'";
-          $arguments1[] = $t;
+        if ($category = search_query_extract($keys, 'category')) {
+          $categories = array();
+          foreach (explode(',', $category) as $c) {
+            $categories[] = "tn.tid = %d";
+            $arguments1[] = $c;
+          }
+          $conditions1 .= ' AND ('. implode(' OR ', $categories) .')';
+          $join1 .= ' INNER JOIN {term_node} tn ON n.vid = tn.vid';
+          $keys = search_query_insert($keys, 'category');
         }
-        $conditions1 .= ' AND ('. implode(' OR ', $types) .')';
-        $keys = search_query_insert($keys, 'type');
-      }
 
-      if ($category = search_query_extract($keys, 'category')) {
-        $categories = array();
-        foreach (explode(',', $category) as $c) {
-          $categories[] = "tn.tid = %d";
-          $arguments1[] = $c;
+        // Build ranking expression (we try to map each parameter to a
+        // uniform distribution in the range 0..1).
+        $ranking = array();
+        $arguments2 = array();
+        $join2 = '';
+        // Used to avoid joining on node_comment_statistics twice
+        $stats_join = FALSE;
+        $total = 0;
+        if ($weight = (int)variable_get('node_rank_relevance', 5)) {
+          // Average relevance values hover around 0.15
+          $ranking[] = '%d * i.relevance';
+          $arguments2[] = $weight;
+          $total += $weight;
         }
-        $conditions1 .= ' AND ('. implode(' OR ', $categories) .')';
-        $join1 .= ' INNER JOIN {term_node} tn ON n.vid = tn.vid';
-        $keys = search_query_insert($keys, 'category');
-      }
-
-      // Build ranking expression (we try to map each parameter to a
-      // uniform distribution in the range 0..1).
-      $ranking = array();
-      $arguments2 = array();
-      $join2 = '';
-      // Used to avoid joining on node_comment_statistics twice
-      $stats_join = FALSE;
-      $total = 0;
-      if ($weight = (int)variable_get('node_rank_relevance', 5)) {
-        // Average relevance values hover around 0.15
-        $ranking[] = '%d * i.relevance';
-        $arguments2[] = $weight;
-        $total += $weight;
-      }
-      if ($weight = (int)variable_get('node_rank_recent', 5)) {
-        // Exponential decay with half-life of 6 months, starting at last indexed node
-        $ranking[] = '%d * POW(2, (GREATEST(MAX(n.created), MAX(n.changed), MAX(c.last_comment_timestamp)) - %d) * 6.43e-8)';
-        $arguments2[] = $weight;
-        $arguments2[] = (int)variable_get('node_cron_last', 0);
-        $join2 .= ' LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
-        $stats_join = TRUE;
-        $total += $weight;
-      }
-      if (module_exists('comment') && $weight = (int)variable_get('node_rank_comments', 5)) {
-        // Inverse law that maps the highest reply count on the site to 1 and 0 to 0.
-        $scale = variable_get('node_cron_comments_scale', 0.0);
-        $ranking[] = '%d * (2.0 - 2.0 / (1.0 + MAX(c.comment_count) * %f))';
-        $arguments2[] = $weight;
-        $arguments2[] = $scale;
-        if (!$stats_join) {
+        if ($weight = (int)variable_get('node_rank_recent', 5)) {
+          // Exponential decay with half-life of 6 months, starting at last indexed node
+          $ranking[] = '%d * POW(2, (GREATEST(MAX(n.created), MAX(n.changed), MAX(c.last_comment_timestamp)) - %d) * 6.43e-8)';
+          $arguments2[] = $weight;
+          $arguments2[] = (int)variable_get('node_cron_last', 0);
           $join2 .= ' LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
+          $stats_join = TRUE;
+          $total += $weight;
         }
-        $total += $weight;
-      }
-      if (module_exists('statistics') && variable_get('statistics_count_content_views', 0) &&
-          $weight = (int)variable_get('node_rank_views', 5)) {
-        // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
-        $scale = variable_get('node_cron_views_scale', 0.0);
-        $ranking[] = '%d * (2.0 - 2.0 / (1.0 + MAX(nc.totalcount) * %f))';
-        $arguments2[] = $weight;
-        $arguments2[] = $scale;
-        $join2 .= ' LEFT JOIN {node_counter} nc ON nc.nid = i.sid';
-        $total += $weight;
-      }
+        if (module_exists('comment') && $weight = (int)variable_get('node_rank_comments', 5)) {
+          // Inverse law that maps the highest reply count on the site to 1 and 0 to 0.
+          $scale = variable_get('node_cron_comments_scale', 0.0);
+          $ranking[] = '%d * (2.0 - 2.0 / (1.0 + MAX(c.comment_count) * %f))';
+          $arguments2[] = $weight;
+          $arguments2[] = $scale;
+          if (!$stats_join) {
+            $join2 .= ' LEFT JOIN {node_comment_statistics} c ON c.nid = i.sid';
+          }
+          $total += $weight;
+        }
+        if (module_exists('statistics') && variable_get('statistics_count_content_views', 0) &&
+            $weight = (int)variable_get('node_rank_views', 5)) {
+          // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
+          $scale = variable_get('node_cron_views_scale', 0.0);
+          $ranking[] = '%d * (2.0 - 2.0 / (1.0 + MAX(nc.totalcount) * %f))';
+          $arguments2[] = $weight;
+          $arguments2[] = $scale;
+          $join2 .= ' LEFT JOIN {node_counter} nc ON nc.nid = i.sid';
+          $total += $weight;
+        }
 
-      // When all search factors are disabled (ie they have a weight of zero),
-      // the default score is based only on keyword relevance and there is no need to
-      // adjust the score of each item.
-      if ($total == 0) {
-        $select2 = 'i.relevance AS score';
-        $total = 1;
-      }
-      else {
-        $select2 = implode(' + ', $ranking) .' AS score';
-      }
+        // When all search factors are disabled (ie they have a weight of zero),
+        // the default score is based only on keyword relevance and there is no need to
+        // adjust the score of each item.
+        if ($total == 0) {
+          $select2 = 'i.relevance AS score';
+          $total = 1;
+        }
+        else {
+          $select2 = implode(' + ', $ranking) .' AS score';
+        }
 
-      // Do search.
-      $find = do_search($keys, 'node', 'INNER JOIN {node} n ON n.nid = i.sid '. $join1, $conditions1 . (empty($where1) ? '' : ' AND '. $where1), $arguments1, $select2, $join2, $arguments2);
+        // Do search.
+        $find = do_search($keys, 'node', 'INNER JOIN {node} n ON n.nid = i.sid '. $join1, $conditions1 . (empty($where1) ? '' : ' AND '. $where1), $arguments1, $select2, $join2, $arguments2);
 
-      // Load results.
-      $results = array();
-      foreach ($find as $item) {
-        // Build the node body.
-        $node = node_load($item->sid);
-        $node->build_mode = NODE_BUILD_SEARCH_RESULT;
-        $node = node_build_content($node, FALSE, FALSE);
-        $node->body = drupal_render($node->content);
+        // Load results.
+        $results = array();
+        foreach ($find as $item) {
+          // Build the node body.
+          $node = node_load($item->sid);
+          $node->build_mode = NODE_BUILD_SEARCH_RESULT;
+          $node = node_build_content($node, FALSE, FALSE);
+          $node->body = drupal_render($node->content);
 
-        // Fetch comments for snippet.
-        $node->body .= module_invoke('comment', 'nodeapi', $node, 'update index');
-        // Fetch terms for snippet.
-        $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
+          // Fetch comments for snippet.
+          $node->body .= module_invoke('comment', 'nodeapi', $node, 'update index');
+          // Fetch terms for snippet.
+          $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
 
-        $extra = node_invoke_nodeapi($node, 'search result');
-        $results[] = array(
-          'link' => url('node/'. $item->sid, array('absolute' => TRUE)),
-          'type' => check_plain(node_get_types('name', $node)),
+          $extra = node_invoke_nodeapi($node, 'search result');
+          $results[] = array(
+            'link' => url('node/'. $item->sid, array('absolute' => TRUE)),
+            'type' => check_plain(node_get_types('name', $node)),
 
-          //TODO: this is a hack, should override search result template some how, but I'm unsure how to pass additional information through...
-          'title' => $node->title .' ('. $node->cc->get_name('short') .')',
+            //TODO: this is a hack, should override search result template some how, but I'm unsure how to pass additional information through...
+            'title' => $node->title .' ('. $node->cc->get_name('short') .')',
 
-          'user' => theme('username', $node),
-          'date' => $node->changed,
-          'node' => $node,
-          'extra' => $extra,
-          'score' => $item->score / $total,
-          'snippet' => search_excerpt($keys, $node->body),
-        );
-      }
-      return $results;
+            'user' => theme('username', $node),
+            'date' => $node->changed,
+            'node' => $node,
+            'extra' => $extra,
+            'score' => $item->score / $total,
+            'snippet' => search_excerpt($keys, $node->body),
+          );
+        }
+        return $results;
+    }
   }
 }
 
