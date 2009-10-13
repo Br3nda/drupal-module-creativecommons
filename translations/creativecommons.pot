@@ -1,10 +1,10 @@
-# $Id: creativecommons.pot,v 1.1.2.6 2009/10/13 18:37:54 balleyne Exp $
+# $Id: creativecommons.pot,v 1.1.2.7 2009/10/13 19:58:11 balleyne Exp $
 #
 # LANGUAGE translation of Drupal (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
 # Generated from files:
 #  creativecommons.class.php,v 1.3.4.41 2009/09/05 22:16:10 turadg
-#  creativecommons.module,v 1.9.2.60 2009/09/01 01:31:50 turadg
+#  creativecommons.module,v 1.9.2.61 2009/10/13 18:37:54 balleyne
 #  creativecommons.info,v 1.2 2009/06/08 22:12:02 balleyne
 #  creativecommons.views.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
 #  creativecommons.actions.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
@@ -14,7 +14,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
-"POT-Creation-Date: 2009-10-13 14:34-0400\n"
+"POT-Creation-Date: 2009-10-13 15:56-0400\n"
 "PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -100,7 +100,7 @@ msgid "To the extent possible under law, all copyright and related or neighborin
 msgstr ""
 
 #: creativecommons.class.php:429
-msgid "This <span rel=\"dc:type\" href=\"@dc:type-uri\">@dc:type-name</span>, <span property=\"dc:title\">@dc:title</span>, by <a rel=\"cc:attributionURL\" href=\"@cc:attributionURL\" property=\"cc:attributionName\">@cc:attributionName</a> is made available under the <a href=\"http://www.copyright.gov/fls/fl102.html\">fair use doctrine</a>.  All rights reserved."
+msgid "All rights reserved on this <span rel=\"dc:type\" href=\"@dc:type-uri\">@dc:type-name</span>, <span property=\"dc:title\">@dc:title</span>, by <a rel=\"cc:attributionURL\" href=\"@cc:attributionURL\" property=\"cc:attributionName\">@cc:attributionName</a>. Certain uses may still be permitted under fair use or a similar doctrine."
 msgstr ""
 
 #: creativecommons.class.php:433
