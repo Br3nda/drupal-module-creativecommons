@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.64 2009/11/04 08:40:49 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.65 2009/11/04 08:51:15 balleyne Exp $
 
 /**
  * @file
@@ -1684,8 +1684,8 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
 
           if (variable_get('creativecommons_site_license_display', FALSE)) {
             $cc = creativecommons_get_site_license();
-            if ($cc->is_available() && $cc->has_license()) {
-              $output = "\n<!--Creative Commons Site License-->\n".
+            if ($cc->is_available()) {
+              $output = "\n<!--Creative Commons Site License-->\n";
 
               // HTML output
               $output .= $cc->get_html(TRUE);
@@ -1696,7 +1696,7 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
               }
 
               // RDF output
-              if (variable_get('creativecommons_rdf', TRUE)) {
+              if ($cc->has_license() && variable_get('creativecommons_rdf', TRUE)) {
                 $output .= "\n<!-- ". $cc->get_rdf() ." -->\n";
               }
 

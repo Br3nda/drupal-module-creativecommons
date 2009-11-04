@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.44 2009/11/04 08:14:54 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.45 2009/11/04 08:51:15 balleyne Exp $
 
 /**
  * @file
@@ -407,8 +407,13 @@ class creativecommons_license {
       '@cc:attributionURL' => $this->metadata['attributionURL'] && creativecommons_metadata_is_available('attributionURL') ? $this->metadata['attributionURL'] : $default_attributionURL,
     );
 
+    // All rights reserved
+    if ($this->type == '') {
+      // None (All Rights Reserved)
+      $html .= variable_get('creativecommons_arr_text', NULL);
+    }
     // Site license, no attribution name
-    if ($site && (!$this->metadata['attributionName'] || !creativecommons_metadata_is_available('attributionName'))) {
+    else if ($site && (!$this->metadata['attributionName'] || !creativecommons_metadata_is_available('attributionName'))) {
       // CC0
       if ($this->type == 'zero') {
         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <a rel="cc:attributionURL" href="@cc:attributionURL" property="dc:title">@dc:title</a>, have been waived, although certain works referenced herein may be separately licensed.', $args);
@@ -423,10 +428,6 @@ class creativecommons_license {
       // CC0
       if ($this->type == 'zero') {
         $html .= t('To the extent possible under law, all copyright and related or neighboring rights to this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">@dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a> have been waived.', $args);
-      }
-      else if ($this->type == '') {
-        // None (All Rights Reserved)
-        $html .= variable_get('creativecommons_arr_text', NULL);
       }
       // Rest
       else {
