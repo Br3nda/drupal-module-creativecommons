@@ -1,10 +1,10 @@
-# $Id: creativecommons.pot,v 1.1.2.11 2009/11/04 08:40:49 balleyne Exp $
+# $Id: creativecommons.pot,v 1.1.2.12 2009/11/04 11:43:17 balleyne Exp $
 #
 # LANGUAGE translation of Drupal (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
 # Generated from files:
-#  creativecommons.class.php,v 1.3.4.44 2009/11/04 08:14:54 balleyne
-#  creativecommons.module,v 1.9.2.63 2009/11/04 08:16:42 balleyne
+#  creativecommons.class.php,v 1.3.4.45 2009/11/04 08:51:15 balleyne
+#  creativecommons.module,v 1.9.2.65 2009/11/04 08:51:15 balleyne
 #  creativecommons.info,v 1.2 2009/06/08 22:12:02 balleyne
 #  creativecommons.views.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
 #  creativecommons.actions.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
@@ -14,7 +14,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
-"POT-Creation-Date: 2009-11-04 03:39-0500\n"
+"POT-Creation-Date: 2009-11-04 06:43-0500\n"
 "PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -87,35 +87,35 @@ msgstr ""
 msgid "Work"
 msgstr ""
 
-#: creativecommons.class.php:414
+#: creativecommons.class.php:419
 msgid "To the extent possible under law, all copyright and related or neighboring rights to this <span rel=\"dc:type\" href=\"@dc:type-uri\">@dc:type-name</span>, <a rel=\"cc:attributionURL\" href=\"@cc:attributionURL\" property=\"dc:title\">@dc:title</a>, have been waived, although certain works referenced herein may be separately licensed."
 msgstr ""
 
-#: creativecommons.class.php:418
+#: creativecommons.class.php:423
 msgid "This <span rel=\"dc:type\" href=\"@dc:type-uri\">@dc:type-name</span>, <a rel=\"cc:attributionURL\" href=\"@cc:attributionURL\" property=\"dc:title\">@dc:title</a>, is licensed under a <a rel=\"license\" href=\"@license-uri\">@license-name license</a>, although certain works referenced herein may be separately licensed."
 msgstr ""
 
-#: creativecommons.class.php:425
+#: creativecommons.class.php:430
 msgid "To the extent possible under law, all copyright and related or neighboring rights to this <span rel=\"dc:type\" href=\"@dc:type-uri\">@dc:type-name</span>, <span property=\"dc:title\">@dc:title</span>, by <a rel=\"cc:attributionURL\" href=\"@cc:attributionURL\" property=\"cc:attributionName\">@cc:attributionName</a> have been waived."
 msgstr ""
 
-#: creativecommons.class.php:433
+#: creativecommons.class.php:434
 msgid "This <span rel=\"dc:type\" href=\"@dc:type-uri\">@dc:type-name</span>, <span property=\"dc:title\">@dc:title</span>, by <a rel=\"cc:attributionURL\" href=\"@cc:attributionURL\" property=\"cc:attributionName\">@cc:attributionName</a> is licensed under a <a rel=\"license\" href=\"@license-uri\">@license-name license</a>."
 msgstr ""
 
-#: creativecommons.class.php:444
+#: creativecommons.class.php:445
 msgid "There are <a rel=\"cc:morePermissions\" href=\"@cc:morePermissions\">alternative licensing options</a> available."
 msgstr ""
 
-#: creativecommons.class.php:449
+#: creativecommons.class.php:450
 msgid "<span property=\"dc:description\">@dc:description</span>"
 msgstr ""
 
-#: creativecommons.class.php:458
+#: creativecommons.class.php:459
 msgid "Copyright &copy; <span property=\"dc:date\">@dc:date</span> <span property=\"dc:rights\">@dc:rights</span>"
 msgstr ""
 
-#: creativecommons.class.php:543
+#: creativecommons.class.php:544
 msgid "CC license could not be saved due to missing node argument."
 msgstr ""
 

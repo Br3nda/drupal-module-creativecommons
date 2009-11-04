@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.45 2009/11/04 08:51:15 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.46 2009/11/04 11:43:16 balleyne Exp $
 
 /**
  * @file
@@ -410,7 +410,7 @@ class creativecommons_license {
     // All rights reserved
     if ($this->type == '') {
       // None (All Rights Reserved)
-      $html .= variable_get('creativecommons_arr_text', NULL);
+      $html .= check_markup(variable_get('creativecommons_arr_text', NULL));
     }
     // Site license, no attribution name
     else if ($site && (!$this->metadata['attributionName'] || !creativecommons_metadata_is_available('attributionName'))) {
