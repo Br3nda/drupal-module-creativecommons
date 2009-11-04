@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.62 2009/11/04 08:14:54 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.63 2009/11/04 08:16:42 balleyne Exp $
 
 /**
  * @file
@@ -305,7 +305,7 @@ function creativecommons_site_defaults() {
   $form['creativecommons_default_license']['creativecommons_default_jurisdiction'] = array(
     '#type' => 'select',
     '#title' => t('Default jurisdiction'),
-i    '#description' => t($q['jurisdiction']['description']),
+    '#description' => $q['jurisdiction']['description'],
     '#options' => creativecommons_format_jurisdiction_array($q['jurisdiction']['answers']),
     '#default_value' => variable_get('creativecommons_default_jurisdiction', ''),
   );
@@ -1832,7 +1832,7 @@ function creativecommons_node_form($node, $form_state) {
           '#default_value' => $selected,
           '#size' => 50,
           '#maxlength' => 255,
-          '#description' => t(creativecommons_get_metadata_description($key)),
+          '#description' => creativecommons_get_metadata_description($key),
           '#attributes' => array('class' => 'creativecommons creativecommons-metadata-select-'. $key),
           '#required' => $required,
         );
@@ -1977,7 +1977,7 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
       $form['creativecommons_user_defaults']['jurisdiction'] = array(
         '#type' => 'select',
         '#title' => t('Jurisdiction'),
-        '#description' => t($q['jurisdiction']['description']) .' '. t('If none set, site default will be used.'),
+        '#description' => $q['jurisdiction']['description'] .' '. t('If none set, site default will be used.'),
         '#options' => $jurisdictions,
         '#default_value' => $account->creativecommons['jurisdiction'],
       );
@@ -1997,7 +1997,7 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
             '#type' => 'textfield',
             '#title' => $name,
             '#default_value' => $account->creativecommons[$key],
-            '#description' => t(creativecommons_get_metadata_description($key)),// .' '. t('If none set, Drupal user info will be used'),
+            '#description' => creativecommons_get_metadata_description($key),// .' '. t('If none set, Drupal user info will be used'),
           );
         }
       }
