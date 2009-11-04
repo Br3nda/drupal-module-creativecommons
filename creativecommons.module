@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.61 2009/10/13 18:37:54 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.62 2009/11/04 08:14:54 balleyne Exp $
 
 /**
  * @file
@@ -207,6 +207,18 @@ function creativecommons_settings() {
     '#description' => t('Attach machine-readable license information as RDF/XML within the HTML of a node to let visitors know what license applies to your works.'),
   );
 
+  // TODO: 2.x license text for all licenses should be configurable
+  $form['creativecommons_display']['creativecommons_arr_text'] = array(
+    '#type' => 'textarea',
+    '#title' => t('All Rights Reserved Text'),
+    '#default_value' => variable_get('creativecommons_arr_text', NULL),
+    '#cols' => 60,
+    '#rows' => 3,
+    '#description' => t('This text will be displayed for content which has no license specified (i.e. all rights reserved).'),
+    '#attributes' => NULL,
+    '#required' => NULL,
+  );
+
   // This if should only wrap the search option when other options are included here  
   if (module_exists('search')) {
     $form['creativecommons_advanced'] = array(
@@ -293,7 +305,7 @@ function creativecommons_site_defaults() {
   $form['creativecommons_default_license']['creativecommons_default_jurisdiction'] = array(
     '#type' => 'select',
     '#title' => t('Default jurisdiction'),
-    '#description' => t($q['jurisdiction']['description']),
+i    '#description' => t($q['jurisdiction']['description']),
     '#options' => creativecommons_format_jurisdiction_array($q['jurisdiction']['answers']),
     '#default_value' => variable_get('creativecommons_default_jurisdiction', ''),
   );

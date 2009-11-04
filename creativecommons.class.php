@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.43 2009/11/01 11:34:25 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.44 2009/11/04 08:14:54 balleyne Exp $
 
 /**
  * @file
@@ -50,7 +50,7 @@ class creativecommons_license {
     }
     // don't fetch a blank license
     else {
-      $this->name = t('All Rights Reserved');
+      $this->name = t('All Rights Reserved (None)');
       $this->type = '';
     }
 
@@ -426,7 +426,7 @@ class creativecommons_license {
       }
       else if ($this->type == '') {
         // None (All Rights Reserved)
-        $html .= t('All rights reserved on this <span rel="dc:type" href="@dc:type-uri">@dc:type-name</span>, <span property="dc:title">@dc:title</span>, by <a rel="cc:attributionURL" href="@cc:attributionURL" property="cc:attributionName">@cc:attributionName</a>. Certain uses may still be permitted under fair use or a similar doctrine.', $args);
+        $html .= variable_get('creativecommons_arr_text', NULL);
       }
       // Rest
       else {
