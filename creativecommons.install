@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.16 2009/11/04 08:14:54 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.17 2009/11/04 08:40:49 balleyne Exp $
 
 /**
  * @file
@@ -163,6 +163,7 @@ function creativecommons_uninstall() {
   variable_del('creativecommons_rdf');
   variable_del('creativecommons_arr_text');
   variable_del('creativecommons_search');
+  variable_del('creativecommons_node_license_redundant_display');
 
   // Uninstall site defaults
   variable_del('creativecommons_default_license_type');

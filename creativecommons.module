@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.63 2009/11/04 08:16:42 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.64 2009/11/04 08:40:49 balleyne Exp $
 
 /**
  * @file
@@ -196,16 +196,6 @@ function creativecommons_settings() {
     '#default_value' => variable_get('creativecommons_nc_img', ''),
   );
 
-  //TODO: 2.x any other display settings? ccREL, sentence structure?
-
-  // TODO: 2.x revisit (and probably remove) this when ccREL is implemented, since RDF/XML is no longer recommended
-  $form['creativecommons_display']['creativecommons_rdf'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Insert RDF/XML'),
-    '#return_value' => 1,
-    '#default_value' => variable_get('creativecommons_rdf', TRUE),
-    '#description' => t('Attach machine-readable license information as RDF/XML within the HTML of a node to let visitors know what license applies to your works.'),
-  );
 
   // TODO: 2.x license text for all licenses should be configurable
   $form['creativecommons_display']['creativecommons_arr_text'] = array(
@@ -224,14 +214,31 @@ function creativecommons_settings() {
     $form['creativecommons_advanced'] = array(
       '#type' => 'fieldset',
       '#title' => t('Advanced'),
-      '#description' => t('Options for how the Creative Commons module interacts with other Drupal modules.'),
     );
 
     $form['creativecommons_advanced']['creativecommons_search'] = array(
       '#type' => 'checkbox',
       '#title' => t('Creative Commons Search'),
       '#default_value' => variable_get('creativecommons_search', TRUE),
+      '#description' => t('Enabled CC search options'),
     );
+    
+  // TODO: 2.x revisit (and probably remove) this when ccREL is implemented, since RDF/XML is no longer recommended
+  $form['creativecommons_advanced']['creativecommons_rdf'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Insert RDF/XML'),
+    '#return_value' => 1,
+    '#default_value' => variable_get('creativecommons_rdf', TRUE),
+    '#description' => t('Attach machine-readable license information as RDF/XML within the HTML of a node to let visitors know what license applies to your works.'),
+  );
+
+  $form['creativecommons_advanced']['creativecommons_node_license_redundant_display'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Display node license when same as site license'),
+    '#return_value' => 1,
+    '#default_value' => variable_get('creativecommons_node_license_redundant_display', TRUE),
+    '#description' => t('Note: if not displayed, node specific metadata won\'t be displayed either.'),
+  );
   }
   return system_settings_form($form);
 
@@ -1657,6 +1664,14 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
           //TODO: don't display license block if user doesn't have permission to view node...
           // what's arg(0) and arg(2)?
           if ( $node && arg(0) == 'node' && ( $node->cc && $node->cc->is_available()) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
+            // Check for redundant site license
+            $site_license_display = variable_get('creativecommons_site_license_display', FALSE);
+            $site_license = creativecommons_get_site_license();
+            $redundant_display = variable_get('creativecommons_node_license_redundant_display', TRUE);
+            if ($site_license_display && !$redundant_display && $node->cc->uri == $site_license->uri){
+              return;
+            }
+            
             // license html
             $block['content'] = $node->cc->get_html();
             return $block;
