@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.65 2009/11/04 08:51:15 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.66 2009/11/10 11:29:31 balleyne Exp $
 
 /**
  * @file
@@ -209,7 +209,7 @@ function creativecommons_settings() {
     '#required' => NULL,
   );
 
-  // This if should only wrap the search option when other options are included here  
+  // This if should only wrap the search option when other options are included here
   if (module_exists('search')) {
     $form['creativecommons_advanced'] = array(
       '#type' => 'fieldset',
@@ -222,7 +222,7 @@ function creativecommons_settings() {
       '#default_value' => variable_get('creativecommons_search', TRUE),
       '#description' => t('Enabled CC search options'),
     );
-    
+
   // TODO: 2.x revisit (and probably remove) this when ccREL is implemented, since RDF/XML is no longer recommended
   $form['creativecommons_advanced']['creativecommons_rdf'] = array(
     '#type' => 'checkbox',
@@ -1668,10 +1668,10 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
             $site_license_display = variable_get('creativecommons_site_license_display', FALSE);
             $site_license = creativecommons_get_site_license();
             $redundant_display = variable_get('creativecommons_node_license_redundant_display', TRUE);
-            if ($site_license_display && !$redundant_display && $node->cc->uri == $site_license->uri){
+            if ($site_license_display && !$redundant_display && $node->cc->uri == $site_license->uri) {
               return;
             }
-            
+
             // license html
             $block['content'] = $node->cc->get_html();
             return $block;
