@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.66 2009/11/10 11:29:31 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.67 2009/11/18 22:59:29 balleyne Exp $
 
 /**
  * @file
@@ -126,7 +126,7 @@ function creativecommons_settings() {
     '#title' => t('Available license types'),
     '#default_value' => $available_license_types,
     '#options' => $license_array_keys,
-    '#description' => t('Select the license types to make available to users.') .' '. t('(Hold CTRL to select multiple.)'),
+    '#description' => t('Select the license types to make available to users. To make a Creative Commons license mandatory, unselect "None."') .' '. t('(Hold CTRL to select multiple.)'),
     '#multiple' => TRUE,
     '#required' => TRUE,
   );

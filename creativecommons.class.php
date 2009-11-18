@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.class.php,v 1.3.4.46 2009/11/04 11:43:16 balleyne Exp $
+// $Id: creativecommons.class.php,v 1.3.4.47 2009/11/18 22:59:29 balleyne Exp $
 
 /**
  * @file
@@ -50,7 +50,7 @@ class creativecommons_license {
     }
     // don't fetch a blank license
     else {
-      $this->name = t('All Rights Reserved (None)');
+      $this->name = t('None (All Rights Reserved)');
       $this->type = '';
     }
 
