@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.67 2009/11/18 22:59:29 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.68 2009/11/20 19:17:27 balleyne Exp $
 
 /**
  * @file
@@ -1921,48 +1921,51 @@ function creativecommons_count_by_license_type($type) {
 function creativecommons_user($op, &$edit, &$account, $category = NULL) {
   switch ($op) {
     case 'view':
-      $site_license = creativecommons_get_default_license();
-      $account->content['creativecommons'] = array(
-        '#type' => 'user_profile_category',
-        '#title' => t('Creative Commons User Defaults'),
-        '#weight' => 50,
-      );
-      $account->content['creativecommons']['jurisdiction'] = array(
-        '#type' => 'user_profile_item',
-        '#title' => t('Jurisdiction'),
-        '#value' => $account->creativecommons['jurisdiction'] ? creativecommons_get_jurisdiction_name($account->creativecommons['jurisdiction']) : creativecommons_get_jurisdiction_name(variable_get('creativecommons_default_jurisdiction', '')) .' [site default]', // TODO: compact, t()
-        '#attributes' => array('class' => 'creativecommons-user-default-jurisdiction'),
-        '#weight' => 1,
-      );
-      $account->content['creativecommons']['default_license'] = array(
-        '#type' => 'user_profile_item',
-        '#title' => t('Default license'),
-        '#value' => $account->cc ? $account->cc->get_name('generic') : $site_license->get_name('generic') .' [site default]',
-        '#attributes' => array('class' => 'creativecommons-user-default-license-type'),
-        '#weight' => 2,
-      );
+      global $user;
+      if ($account->uid == $user->uid) {
+        $site_license = creativecommons_get_default_license();
+        $account->content['creativecommons'] = array(
+          '#type' => 'user_profile_category',
+          '#title' => t('Creative Commons User Defaults'),
+          '#weight' => 50,
+        );
+        $account->content['creativecommons']['jurisdiction'] = array(
+          '#type' => 'user_profile_item',
+          '#title' => t('Jurisdiction'),
+          '#value' => $account->creativecommons['jurisdiction'] ? creativecommons_get_jurisdiction_name($account->creativecommons['jurisdiction']) : creativecommons_get_jurisdiction_name(variable_get('creativecommons_default_jurisdiction', '')) .' [site default]', // TODO: compact, t()
+          '#attributes' => array('class' => 'creativecommons-user-default-jurisdiction'),
+          '#weight' => 1,
+        );
+        $account->content['creativecommons']['default_license'] = array(
+          '#type' => 'user_profile_item',
+          '#title' => t('Default license'),
+          '#value' => $account->cc ? $account->cc->get_name('generic') : $site_license->get_name('generic') .' [site default]',
+          '#attributes' => array('class' => 'creativecommons-user-default-license-type'),
+          '#weight' => 2,
+        );
 
-      // Build attribution text (not using ccREL/RDFa here because this isn't actually attribution for anything)
-      if ($account->creativecommons['attributionName']) {
-        if ($account->creativecommons['attributionURL']) {
-          $attribution = l($account->creativecommons['attributionName'], $account->creativecommons['attributionURL']);
+        // Build attribution text (not using ccREL/RDFa here because this isn't actually attribution for anything)
+        if ($account->creativecommons['attributionName']) {
+          if ($account->creativecommons['attributionURL']) {
+            $attribution = l($account->creativecommons['attributionName'], $account->creativecommons['attributionURL']);
+          }
+          else {
+            $attribution = $account->creativecommons['attributionName'];
+          }
         }
         else {
-          $attribution = $account->creativecommons['attributionName'];
+          $attribution = l($account->creativecommons['attributionURL'], $account->creativecommons['attributionURL']);
         }
-      }
-      else {
-        $attribution = l($account->creativecommons['attributionURL'], $account->creativecommons['attributionURL']);
-      }
-      $account->content['creativecommons']['attribution'] = array(
-        '#type' => 'user_profile_item',
-        '#title' => t('Attribution'),
-        '#value' => $attribution,
-        '#attributes' => array('class' => 'creativecommons-user-default-license-type'),
-        '#weight' => 3,
-      );
+        $account->content['creativecommons']['attribution'] = array(
+          '#type' => 'user_profile_item',
+          '#title' => t('Attribution'),
+          '#value' => $attribution,
+          '#attributes' => array('class' => 'creativecommons-user-default-license-type'),
+          '#weight' => 3,
+        );
 
-      return $account;
+        return $account;
+      }
     case 'form':
       $site_license = creativecommons_get_default_license();
       $available_license_types = creativecommons_get_available_license_list(NULL, TRUE);

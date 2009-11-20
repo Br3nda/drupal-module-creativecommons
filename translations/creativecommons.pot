@@ -1,10 +1,10 @@
-# $Id: creativecommons.pot,v 1.1.2.14 2009/11/18 22:59:29 balleyne Exp $
+# $Id: creativecommons.pot,v 1.1.2.15 2009/11/20 19:17:27 balleyne Exp $
 #
 # LANGUAGE translation of Drupal (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
 # Generated from files:
-#  creativecommons.class.php,v 1.3.4.46 2009/11/04 11:43:16 balleyne
-#  creativecommons.module,v 1.9.2.66 2009/11/10 11:29:31 balleyne
+#  creativecommons.class.php,v 1.3.4.47 2009/11/18 22:59:29 balleyne
+#  creativecommons.module,v 1.9.2.67 2009/11/18 22:59:29 balleyne
 #  creativecommons.info,v 1.2 2009/06/08 22:12:02 balleyne
 #  creativecommons.views.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
 #  creativecommons.actions.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
@@ -14,7 +14,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
-"POT-Creation-Date: 2009-11-18 17:57-0500\n"
+"POT-Creation-Date: 2009-11-20 14:05-0500\n"
 "PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -43,7 +43,7 @@ msgstr ""
 msgid "CC0"
 msgstr ""
 
-#: creativecommons.class.php:250 creativecommons.module:1959 includes/creativecommons.views.inc:62
+#: creativecommons.class.php:250 creativecommons.module:1961 includes/creativecommons.views.inc:62
 msgid "Attribution"
 msgstr ""
 
@@ -235,11 +235,11 @@ msgstr ""
 msgid "No Creative Commons license types are enabled!"
 msgstr ""
 
-#: creativecommons.module:293;1939
+#: creativecommons.module:293;1941
 msgid "Default license"
 msgstr ""
 
-#: creativecommons.module:305;2002
+#: creativecommons.module:305;2005
 msgid "License type"
 msgstr ""
 
@@ -511,23 +511,23 @@ msgstr ""
 msgid "!metadata-name of licensed work"
 msgstr ""
 
-#: creativecommons.module:1927;1984
+#: creativecommons.module:1929;1987
 msgid "Creative Commons User Defaults"
 msgstr ""
 
-#: creativecommons.module:1932;1994
+#: creativecommons.module:1934;1997
 msgid "Jurisdiction"
 msgstr ""
 
-#: creativecommons.module:1971
+#: creativecommons.module:1974
 msgid "[use site default]"
 msgstr ""
 
-#: creativecommons.module:1995;2005
+#: creativecommons.module:1998;2008
 msgid "If none set, site default will be used."
 msgstr ""
 
-#: creativecommons.module:2005
+#: creativecommons.module:2008
 msgid "Select your default license type for new content."
 msgstr ""
 
