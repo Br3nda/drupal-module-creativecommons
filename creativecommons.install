@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.17 2009/11/04 08:40:49 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.18 2009/12/08 03:54:47 balleyne Exp $
 
 /**
  * @file
@@ -155,6 +155,7 @@ function creativecommons_uninstall() {
   drupal_uninstall_schema('creativecommons');
 
   // Uninstall settings variables
+  variable_del('creativecommons_locale');
   variable_del('creativecommons_available_license_types');
   variable_del('creativecommons_available_metadata');
   variable_del('creativecommons_required_metadata');

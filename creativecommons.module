@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.68 2009/11/20 19:17:27 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.69 2009/12/08 03:54:47 balleyne Exp $
 
 /**
  * @file
@@ -119,6 +119,14 @@ function creativecommons_settings() {
   $form['creativecommons_license'] = array(
     '#type' => 'fieldset',
     '#title' => t('License selection'),
+  );
+
+  $form['creativecommons_license']['creativecommons_locale'] = array(
+    '#type' => 'select',
+    '#title' => t('Locale'),
+    '#description' => t('The locale will determine in which language Creative Commons data from the API is displayed.'),
+    '#default_value' => variable_get('creativecommons_locale', ''),
+    '#options' => creativecommons_get_locales(),
   );
 
   $form['creativecommons_license']['creativecommons_available_license_types'] = array(
@@ -669,10 +677,27 @@ function creativecommons_generic_license_name($full_name) {
 }
 
 /**
+ * Return list of locales from CC API.
+ */
+function creativecommons_get_locales() {
+  $uri = '/locales';
+  $xml = creativecommons_return_xml($uri);
+
+  $parser = new SimpleXMLElement($xml);
+  $locales = array('');
+  foreach ($parser->locale as $locale) {
+    $id = (string)$locale['id'];
+    $locales[$id] = $id;
+  }
+  asort($locales);
+  return $locales;
+}
+
+/**
  * Return list of jurisdictions from CC API.
  */
 function creativecommons_get_jurisdictions() {
-  $uri = '/support/jurisdictions';
+  $uri = '/support/jurisdictions?locale='. variable_get('creativecommons_locale', '');
   $xml = '<jurisdictions>'. creativecommons_return_xml($uri) .'</jurisdictions>';
 
   $parser = xml_parser_create();
@@ -752,8 +777,8 @@ function creativecommons_get_licenses($options = NULL, $value_as_type = FALSE) {
   xml_parser_set_option($parser, XML_OPTION_CASE_FOLDING, 0);
 
   $uri = '/simple/chooser';
-  if ($options)
-    $uri .= '?'. http_build_query($options);
+  $options['locale'] = variable_get('creativecommons_locale', '');
+  $uri .= '?'. http_build_query($options);
   $standard_xml = '<standard>'. creativecommons_return_xml($uri) .'</standard>';
 
   xml_parse_into_struct($parser, $standard_xml, $standard_licenses, $index);
@@ -993,9 +1018,10 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
     $result = creativecommons_api_request($uri, $headers);
     switch ($result->code) {
       case 200:
-        variable_set('creativecommons_api_'. $uri, $result->data);
+        $xml = utf8_encode($result->data);
+        variable_set('creativecommons_api_'. $uri, $xml);
         variable_set('creativecommons_api_'. $uri .'_timestamp', time());
-        return $result->data;
+        return $xml;
         break;
       default:
         return;
@@ -1176,7 +1202,7 @@ function creativecommons_get_questions_array($license_id) {
 function creativecommons_get_questions_xml($license_id) {
   if ($license_id != 'none' && !is_null($license_id)) {
     $filename = $license_id .'.xml';
-    return creativecommons_return_xml('/license/'. $license_id .'/');
+    return creativecommons_return_xml('/license/'. $license_id .'/?locale='. variable_get('creativecommons_locale', ''));
   }
   return;
 }

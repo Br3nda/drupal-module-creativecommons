@@ -1,4 +1,4 @@
-# $Id: es.po,v 1.1.2.1 2009/12/08 02:14:42 balleyne Exp $
+# $Id: es.po,v 1.1.2.2 2009/12/08 03:54:47 balleyne Exp $
 #
 # LANGUAGE translation of Drupal (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
@@ -25,8 +25,8 @@ msgstr ""
 "X-Generator: Lokalize 1.0\n"
 
 #: creativecommons.class.php:53
-msgid "All Rights Reserved (None)"
-msgstr "Todos los derechos reservados (Ninguno)"
+msgid "None (All Rights Reserved)"
+msgstr "Ninguno (Todos los derechos reservados)"
 
 #: creativecommons.class.php:100
 msgid "CC0 1.0 Universal"
@@ -150,8 +150,8 @@ msgstr "Selección de licencia"
 msgid "Available license types"
 msgstr "Tipos de licencias disponibles"
 
-#: creativecommons.module:129
-msgid "Select the license types to make available to users."
+#: creativecommons.module:137
+msgid "Select the license types to make available to users. To make a Creative Commons license mandatory, unselect \"None.\""
 msgstr "Seleccione el tipo de licencia aplicable a usuarios"
 
 #: creativecommons.module:129;144
