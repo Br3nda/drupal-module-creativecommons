@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.69 2009/12/08 03:54:47 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.70 2009/12/23 12:02:46 balleyne Exp $
 
 /**
  * @file
@@ -1993,6 +1993,10 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
         return $account;
       }
     case 'form':
+      if ($category!='account') {
+        // disable user defaults on all non-account settings pages.
+        return;
+      }
       $site_license = creativecommons_get_default_license();
       $available_license_types = creativecommons_get_available_license_list(NULL, TRUE);
 
