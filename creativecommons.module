@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.71 2009/12/23 13:00:57 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.72 2009/12/23 13:05:20 balleyne Exp $
 
 /**
  * @file
@@ -1777,6 +1777,7 @@ function creativecommons_node_form($node, $form_state) {
     '#type' => 'fieldset',
     '#title' => t('Creative Commons License'),
     '#description' => $description,
+    '#group' => 'additional_settings',
     '#prefix' => '<div class="attachments">',
     '#suffix' => '</div>',
     '#collapsible' => TRUE,
