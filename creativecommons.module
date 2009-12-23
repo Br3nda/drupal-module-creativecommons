@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.70 2009/12/23 12:02:46 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.71 2009/12/23 13:00:57 balleyne Exp $
 
 /**
  * @file
@@ -40,7 +40,10 @@ require_once 'creativecommons.actions.inc';
  * Implementation of hook_perm().
  */
 function creativecommons_perm() {
-  return array('administer creative commons', 'attach creative commons');
+  return array(
+    'administer creative commons',
+    'attach creative commons',
+    'use creative commons user defaults');
 }
 
 
@@ -1945,6 +1948,11 @@ function creativecommons_count_by_license_type($type) {
  * Implementation of hook_user().
  */
 function creativecommons_user($op, &$edit, &$account, $category = NULL) {
+  if (!user_access('use creative commons user defaults')) {
+    // user doesn't have permission to use this feature
+    return;
+  }
+  
   switch ($op) {
     case 'view':
       global $user;

@@ -1,10 +1,10 @@
-# $Id: creativecommons.pot,v 1.1.2.17 2009/12/23 12:02:46 balleyne Exp $
+# $Id: creativecommons.pot,v 1.1.2.18 2009/12/23 13:00:57 balleyne Exp $
 #
 # LANGUAGE translation of Drupal (general)
 # Copyright YEAR NAME <EMAIL@ADDRESS>
 # Generated from files:
 #  creativecommons.class.php,v 1.3.4.47 2009/11/18 22:59:29 balleyne
-#  creativecommons.module,v 1.9.2.69 2009/12/08 03:54:47 balleyne
+#  creativecommons.module,v 1.9.2.70 2009/12/23 12:02:46 balleyne
 #  creativecommons.info,v 1.2 2009/06/08 22:12:02 balleyne
 #  creativecommons.views.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
 #  creativecommons.actions.inc,v 1.1.2.2 2009/08/25 15:14:09 balleyne
@@ -14,7 +14,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
-"POT-Creation-Date: 2009-12-23 07:02-0500\n"
+"POT-Creation-Date: 2009-12-23 08:00-0500\n"
 "PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -35,7 +35,7 @@ msgstr ""
 msgid "CC API Error (@error-id): %error-message"
 msgstr ""
 
-#: creativecommons.class.php:190 creativecommons.module:771;796;802;1305;1402;54 creativecommons.info:0 includes/creativecommons.views.inc:19;23
+#: creativecommons.class.php:190 creativecommons.module:774;799;805;1308;1405;57 creativecommons.info:0 includes/creativecommons.views.inc:19;23
 msgid "Creative Commons"
 msgstr ""
 
@@ -43,7 +43,7 @@ msgstr ""
 msgid "CC0"
 msgstr ""
 
-#: creativecommons.class.php:250 creativecommons.module:1987 includes/creativecommons.views.inc:62
+#: creativecommons.class.php:250 creativecommons.module:1995 includes/creativecommons.views.inc:62
 msgid "Attribution"
 msgstr ""
 
@@ -67,7 +67,7 @@ msgstr ""
 msgid "No Derivatives"
 msgstr ""
 
-#: creativecommons.class.php:256 creativecommons.module:772;796;808;811
+#: creativecommons.class.php:256 creativecommons.module:775;799;811;814
 msgid "Public Domain"
 msgstr ""
 
@@ -123,449 +123,453 @@ msgstr ""
 msgid "Set Creative Commons license"
 msgstr ""
 
-#: creativecommons.module:93
+#: creativecommons.module:96
 msgid "A Creative Commons license helps you publish your work while letting others know exactly what they can and can't do with it. Creative Commons offers a flexible range of protections and freedoms for authors and artists, built upon the \"all rights reserved\" concept of traditional copyright to create a voluntary \"some rights reserved\" copyright."
 msgstr ""
 
-#: creativecommons.module:94
+#: creativecommons.module:97
 msgid "Assign a Creative Commons license to site content."
 msgstr ""
 
-#: creativecommons.module:95
+#: creativecommons.module:98
 msgid "Attaching a Creative Commons license to a node within Drupal will designate the content of that node, as well as any attached files, as available under that license."
 msgstr ""
 
-#: creativecommons.module:96
+#: creativecommons.module:99
 msgid "For more information, visit <a href=\"@learn-more\">@learn-more</a>."
 msgstr ""
 
-#: creativecommons.module:121
+#: creativecommons.module:124
 msgid "License selection"
 msgstr ""
 
-#: creativecommons.module:126
+#: creativecommons.module:129
 msgid "Locale"
 msgstr ""
 
-#: creativecommons.module:127
+#: creativecommons.module:130
 msgid "The locale will determine in which language Creative Commons data from the API is displayed."
 msgstr ""
 
-#: creativecommons.module:134
+#: creativecommons.module:137
 msgid "Available license types"
 msgstr ""
 
-#: creativecommons.module:137
+#: creativecommons.module:140
 msgid "Select the license types to make available to users. To make a Creative Commons license mandatory, unselect \"None.\""
 msgstr ""
 
-#: creativecommons.module:137;152
+#: creativecommons.module:140;155
 msgid "(Hold CTRL to select multiple.)"
 msgstr ""
 
-#: creativecommons.module:149
+#: creativecommons.module:152
 msgid "Available metadata fields"
 msgstr ""
 
-#: creativecommons.module:152
+#: creativecommons.module:155
 msgid "Select the metadata fields to make available to users."
 msgstr ""
 
-#: creativecommons.module:158
+#: creativecommons.module:161
 msgid "Required metadata fields"
 msgstr ""
 
-#: creativecommons.module:161
+#: creativecommons.module:164
 msgid "This option allows you to require specific metadata to be included when a license is applied. Metadata must be enabled for requirement to be enforced."
 msgstr ""
 
-#: creativecommons.module:167
+#: creativecommons.module:170
 msgid "Display"
 msgstr ""
 
-#: creativecommons.module:178
+#: creativecommons.module:181
 msgid "License text style"
 msgstr ""
 
-#: creativecommons.module:187
+#: creativecommons.module:190
 msgid "(None)"
 msgstr ""
 
-#: creativecommons.module:191
+#: creativecommons.module:194
 msgid "License image style"
 msgstr ""
 
-#: creativecommons.module:202
+#: creativecommons.module:205
 msgid "Noncommercial image style"
 msgstr ""
 
-#: creativecommons.module:211
+#: creativecommons.module:214
 msgid "All Rights Reserved Text"
 msgstr ""
 
-#: creativecommons.module:215
+#: creativecommons.module:218
 msgid "This text will be displayed for content which has no license specified (i.e. all rights reserved)."
 msgstr ""
 
-#: creativecommons.module:224
+#: creativecommons.module:227
 msgid "Advanced"
 msgstr ""
 
-#: creativecommons.module:229
+#: creativecommons.module:232
 msgid "Creative Commons Search"
 msgstr ""
 
-#: creativecommons.module:231
+#: creativecommons.module:234
 msgid "Enabled CC search options"
 msgstr ""
 
-#: creativecommons.module:237
+#: creativecommons.module:240
 msgid "Insert RDF/XML"
 msgstr ""
 
-#: creativecommons.module:240
+#: creativecommons.module:243
 msgid "Attach machine-readable license information as RDF/XML within the HTML of a node to let visitors know what license applies to your works."
 msgstr ""
 
-#: creativecommons.module:245
+#: creativecommons.module:248
 msgid "Display node license when same as site license"
 msgstr ""
 
-#: creativecommons.module:248
+#: creativecommons.module:251
 msgid "Note: if not displayed, node specific metadata won't be displayed either."
 msgstr ""
 
-#: creativecommons.module:264
+#: creativecommons.module:267
 msgid "License information will not be displayed for nodes with disabled licenses."
 msgstr ""
 
-#: creativecommons.module:280
+#: creativecommons.module:283
 msgid "No Creative Commons license types are enabled!"
 msgstr ""
 
-#: creativecommons.module:301;1967
+#: creativecommons.module:304;1975
 msgid "Default license"
 msgstr ""
 
-#: creativecommons.module:313;2035
+#: creativecommons.module:316;2043
 msgid "License type"
 msgstr ""
 
-#: creativecommons.module:316
+#: creativecommons.module:319
 msgid "Select the site wide default license type for new content."
 msgstr ""
 
-#: creativecommons.module:322
+#: creativecommons.module:325
 msgid "Default jurisdiction"
 msgstr ""
 
-#: creativecommons.module:332
+#: creativecommons.module:335
 msgid "Site license"
 msgstr ""
 
-#: creativecommons.module:336
+#: creativecommons.module:339
 msgid "Use the default license as a site wide license, to be displayed on every page."
 msgstr ""
 
-#: creativecommons.module:354;1816
+#: creativecommons.module:357;1819
 msgid "Additional Information"
 msgstr ""
 
-#: creativecommons.module:355
+#: creativecommons.module:358
 msgid "If default license is used as site wide license, the following metadata will apply."
 msgstr ""
 
-#: creativecommons.module:419
+#: creativecommons.module:422
 msgid "Additional text"
 msgstr ""
 
-#: creativecommons.module:423
+#: creativecommons.module:426
 msgid "This text will accompany the site license."
 msgstr ""
 
-#: creativecommons.module:453
+#: creativecommons.module:456
 msgid "Content Types"
 msgstr ""
 
-#: creativecommons.module:456
+#: creativecommons.module:459
 msgid "Enable Creative Commons licensing for the following content types."
 msgstr ""
 
-#: creativecommons.module:532
+#: creativecommons.module:535
 msgid "The @license-name license is not enabled."
 msgstr ""
 
-#: creativecommons.module:532;539;546;550
+#: creativecommons.module:535;542;549;553
 msgid "Please review license selection."
 msgstr ""
 
-#: creativecommons.module:539
+#: creativecommons.module:542
 msgid "License jurisdiction will be changed from @old-jurisdiction to @new-jurisdiction."
 msgstr ""
 
-#: creativecommons.module:546
+#: creativecommons.module:549
 msgid "The version of your license will be changed from @old-version to @new-version."
 msgstr ""
 
-#: creativecommons.module:550
+#: creativecommons.module:553
 msgid "Your license selection is set to be altered."
 msgstr ""
 
-#: creativecommons.module:578;1775 includes/creativecommons.views.inc:38;44
+#: creativecommons.module:581;1778 includes/creativecommons.views.inc:38;44
 msgid "Creative Commons License"
 msgstr ""
 
-#: creativecommons.module:709
+#: creativecommons.module:712
 msgid "Generic"
 msgstr ""
 
-#: creativecommons.module:982
+#: creativecommons.module:985
 msgid "Error accessing CC API: %error"
 msgstr ""
 
-#: creativecommons.module:1041
+#: creativecommons.module:1044
 msgid "Attribution Name"
 msgstr ""
 
-#: creativecommons.module:1042
+#: creativecommons.module:1045
 msgid "Attribution URL"
 msgstr ""
 
-#: creativecommons.module:1043
+#: creativecommons.module:1046
 msgid "<a href=\"@cc-plus-about\">CC+</a> URL"
 msgstr ""
 
-#: creativecommons.module:1046
+#: creativecommons.module:1049
 msgid "Title"
 msgstr ""
 
-#: creativecommons.module:1047
+#: creativecommons.module:1050
 msgid "Type"
 msgstr ""
 
-#: creativecommons.module:1048
+#: creativecommons.module:1051
 msgid "Source work URL"
 msgstr ""
 
-#: creativecommons.module:1050
+#: creativecommons.module:1053
 msgid "Description"
 msgstr ""
 
-#: creativecommons.module:1051
+#: creativecommons.module:1054
 msgid "Creator"
 msgstr ""
 
-#: creativecommons.module:1052
+#: creativecommons.module:1055
 msgid "Copyright holder"
 msgstr ""
 
-#: creativecommons.module:1053
+#: creativecommons.module:1056
 msgid "Year of copyright"
 msgstr ""
 
-#: creativecommons.module:1101
+#: creativecommons.module:1104
 msgid "The name the creator of a Work would like used when attributing re-use."
 msgstr ""
 
-#: creativecommons.module:1102
+#: creativecommons.module:1105
 msgid "The URL the creator of a Work would like used when attributing re-use."
 msgstr ""
 
-#: creativecommons.module:1103
+#: creativecommons.module:1106
 msgid "The URL where additional permissions or alternative licenses for a Work are available."
 msgstr ""
 
-#: creativecommons.module:1106
+#: creativecommons.module:1109
 msgid "A name by which the Work is formally known."
 msgstr ""
 
-#: creativecommons.module:1107
+#: creativecommons.module:1110
 msgid "The nature or genre of the Work."
 msgstr ""
 
-#: creativecommons.module:1108
+#: creativecommons.module:1111
 msgid "An account of the Work."
 msgstr ""
 
-#: creativecommons.module:1109
+#: creativecommons.module:1112
 msgid "An entity primarily responsible for making the Work."
 msgstr ""
 
-#: creativecommons.module:1110
+#: creativecommons.module:1113
 msgid "Information about rights held in and over the Work."
 msgstr ""
 
-#: creativecommons.module:1111
+#: creativecommons.module:1114
 msgid "Year of copyright."
 msgstr ""
 
-#: creativecommons.module:1112
+#: creativecommons.module:1115
 msgid "A related resource from which the described Work is derived."
 msgstr ""
 
-#: creativecommons.module:1129
+#: creativecommons.module:1132
 msgid " (see !link)"
 msgstr ""
 
-#: creativecommons.module:1217
+#: creativecommons.module:1220
 msgid "Collection"
 msgstr ""
 
-#: creativecommons.module:1218
+#: creativecommons.module:1221
 msgid "Dataset"
 msgstr ""
 
-#: creativecommons.module:1219
+#: creativecommons.module:1222
 msgid "Event"
 msgstr ""
 
-#: creativecommons.module:1220
+#: creativecommons.module:1223
 msgid "Image"
 msgstr ""
 
-#: creativecommons.module:1221
+#: creativecommons.module:1224
 msgid "Interactive Resource"
 msgstr ""
 
-#: creativecommons.module:1222
+#: creativecommons.module:1225
 msgid "Moving Image"
 msgstr ""
 
-#: creativecommons.module:1224
+#: creativecommons.module:1227
 msgid "Service"
 msgstr ""
 
-#: creativecommons.module:1225
+#: creativecommons.module:1228
 msgid "Software"
 msgstr ""
 
-#: creativecommons.module:1226
+#: creativecommons.module:1229
 msgid "Sound"
 msgstr ""
 
-#: creativecommons.module:1227
+#: creativecommons.module:1230
 msgid "Still Image"
 msgstr ""
 
-#: creativecommons.module:1228
+#: creativecommons.module:1231
 msgid "Text"
 msgstr ""
 
-#: creativecommons.module:1283
+#: creativecommons.module:1286
 msgid "Allow user to attach a Creative Commons license"
 msgstr ""
 
-#: creativecommons.module:1284
+#: creativecommons.module:1287
 msgid "Users with the <em>attach creative commons</em> permission will be able to select a license for a node of this type."
 msgstr ""
 
-#: creativecommons.module:1306
+#: creativecommons.module:1309
 msgid "Find content that can be..."
 msgstr ""
 
-#: creativecommons.module:1311
+#: creativecommons.module:1314
 msgid "used for <strong>commercial purposes</strong>"
 msgstr ""
 
-#: creativecommons.module:1317
+#: creativecommons.module:1320
 msgid "<strong>modified</strong>, <strong>adapted</strong> or <strong>built upon</strong>"
 msgstr ""
 
-#: creativecommons.module:1332;1384
+#: creativecommons.module:1335;1387
 msgid "Advanced search"
 msgstr ""
 
-#: creativecommons.module:1343
+#: creativecommons.module:1346
 msgid "Containing any of the words"
 msgstr ""
 
-#: creativecommons.module:1349
+#: creativecommons.module:1352
 msgid "Containing the phrase"
 msgstr ""
 
-#: creativecommons.module:1355
+#: creativecommons.module:1358
 msgid "Containing none of the words"
 msgstr ""
 
-#: creativecommons.module:1364
+#: creativecommons.module:1367
 msgid "Only in the category(s)"
 msgstr ""
 
-#: creativecommons.module:1377
+#: creativecommons.module:1380
 msgid "Only of the type(s)"
 msgstr ""
 
-#: creativecommons.module:1427
+#: creativecommons.module:1430
 msgid "No Creative Commons licenses are enabled."
 msgstr ""
 
-#: creativecommons.module:1659
+#: creativecommons.module:1662
 msgid "Creative Commons Node License"
 msgstr ""
 
-#: creativecommons.module:1668
+#: creativecommons.module:1671
 msgid "Creative Commons Site License"
 msgstr ""
 
-#: creativecommons.module:1760
+#: creativecommons.module:1763
 msgid "With a Creative Commons license, <em>you keep your\tcopyright</em> but allow people to <a href=\"@about-licenses-url\">copy and distribute your work</a> provided they <a href=\"@attribution-wiki-url\">give you credit</a> -- and only on the conditions you specify here. For those new to Creative Commons licensing, visit the website for <a href=\"@think-about-url\">a list of things to think about</a>."
 msgstr ""
 
-#: creativecommons.module:1763
+#: creativecommons.module:1766
 msgid "If you want to offer your work with no conditions or you want to certify a work as public domain, choose one of the <a href=\"@public-domain-url\">public domain tools</a>."
 msgstr ""
 
-#: creativecommons.module:1826
+#: creativecommons.module:1829
 msgid "!metadata-name of licensed work"
 msgstr ""
 
-#: creativecommons.module:1955;2017
+#: creativecommons.module:1963;2025
 msgid "Creative Commons User Defaults"
 msgstr ""
 
-#: creativecommons.module:1960;2027
+#: creativecommons.module:1968;2035
 msgid "Jurisdiction"
 msgstr ""
 
-#: creativecommons.module:2004
+#: creativecommons.module:2012
 msgid "[use site default]"
 msgstr ""
 
-#: creativecommons.module:2028;2038
+#: creativecommons.module:2036;2046
 msgid "If none set, site default will be used."
 msgstr ""
 
-#: creativecommons.module:2038
+#: creativecommons.module:2046
 msgid "Select your default license type for new content."
 msgstr ""
 
-#: creativecommons.module:263
+#: creativecommons.module:266
 msgid "There is 1 node currently using the %name license. "
 msgid_plural "There are @count nodes currently using the %name license. "
 msgstr[0] ""
 msgstr[1] ""
 
-#: creativecommons.module:43
+#: creativecommons.module:44
 msgid "administer creative commons"
 msgstr ""
 
-#: creativecommons.module:43
+#: creativecommons.module:45
 msgid "attach creative commons"
 msgstr ""
 
-#: creativecommons.module:55
+#: creativecommons.module:46
+msgid "use creative commons user defaults"
+msgstr ""
+
+#: creativecommons.module:58
 msgid "Configure the Creative Commons settings."
 msgstr ""
 
-#: creativecommons.module:62
+#: creativecommons.module:65
 msgid "Settings"
 msgstr ""
 
-#: creativecommons.module:68
+#: creativecommons.module:71
 msgid "Defaults"
 msgstr ""
 
-#: creativecommons.module:76
+#: creativecommons.module:79
 msgid "Content types"
 msgstr ""
 
