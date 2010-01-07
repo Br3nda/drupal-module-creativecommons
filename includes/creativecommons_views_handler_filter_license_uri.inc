@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons_views_handler_filter_license_uri.inc,v 1.1.2.2 2009/12/30 07:19:04 balleyne Exp $
+// $Id: creativecommons_views_handler_filter_license_uri.inc,v 1.1.2.3 2010/01/07 06:34:22 balleyne Exp $
 /**
  * Filter by license type
  */
@@ -7,19 +7,53 @@ class creativecommons_views_handler_filter_license_uri extends views_handler_fil
   function get_value_options() {
     if (!isset($this->value_options)) {
       $this->value_title = t('License Types');
-      $jurisdiction = variable_get('creativecommons_default_jurisdiction', '');
-      $types = creativecommons_get_available_license_list( array('jurisdiction' => $jurisdiction) );
+      $available_license_types = creativecommons_get_available_license_types();
+      $license_array_keys = creativecommons_get_licenses(array('jurisdiction' => variable_get('creativecommons_default_jurisdiction', '')), TRUE);
         
-      foreach ($types as $type => $info) {
+      foreach ($license_array_keys as $key => $info) {
         if(is_array($info)){
-          foreach($info as $type => $value){
-            $options[$type] = $value;
+          foreach($info as $key => $value){
+            if(in_array($key,$available_license_types)){
+              $options[$key] = $value;
+            }
           }
         } else {
-            $options[$type] = $info;
+          if(in_array($key,$available_license_types)){
+            $options[$key] = $info;
+          }
         }
       }
       $this->value_options = $options;
     }
   }
+  function query() {
+
+    if (empty($this->value)) {
+      return;
+    }
+    $this->ensure_my_table();
+
+    if($this->operator == 'not in'){
+      $not = ' NOT ';
+    } 
+    foreach($this->value as $value){
+      if(strlen($where)){
+        if($this->operator == 'not in'){
+          $or = ' AND ';
+        } else {
+          $or = ' OR ';
+        }
+      }
+      if(strlen($value)){
+        $like = '\'http://creativecommons.org/%/'.$value.'/%\' ';
+      }
+      else {
+        $like = '\'\'';
+      }
+      $where = " $this->table_alias.$this->real_field $not" ." LIKE ".  $like . $or  . $where;
+      
+    }
+    $this->query->add_where($this->options['group'], $where);
+  }
+
 }
