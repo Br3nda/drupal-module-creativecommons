@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.19 2009/12/23 13:00:57 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.20 2010/02/11 22:05:23 balleyne Exp $
 
 /**
  * @file
@@ -143,7 +143,7 @@ function creativecommons_install() {
 
   // CC lite warning
   if (module_exists('creativecommons_lite')) {
-    drupal_set_message(st('To avoid confusion, it is not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time.'), 'warning');
+    drupal_set_message(st('To avoid confusion, it is not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time. ' . l('Import from CC Lite', 'admin/settings/creativecommons/import')), 'warning');
   }
 }
 

@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.72 2009/12/23 13:05:20 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.73 2010/02/11 22:05:23 balleyne Exp $
 
 /**
  * @file
@@ -81,9 +81,18 @@ function creativecommons_menu() {
     'page arguments' => array('creativecommons_types_form'),
     'access arguments' => array('administer creative commons'),
     'type' => MENU_LOCAL_TASK,
-    'weight' => 10
+    'weight' => 10,
   );
-
+  
+  $items['admin/settings/creativecommons/import'] = array(
+    'title' => 'Import',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('creativecommons_import_form'),
+    'access arguments' => array('administer creative commons'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 20,
+  );
+  
   return $items;
 }
 
@@ -462,6 +471,55 @@ function creativecommons_types_form() {
   return system_settings_form($form);
 }
 
+/**
+ * Form builder. Allow administrator to import data from other services (i.e. 
+ * CC Lite).
+ */
+function creativecommons_import_form() {
+  $form = array();
+  
+  $form['creativecommons_lite'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Creative Commons Lite'),
+    '#description' => module_exists('creativecommons_lite') ? t('Import data from the Creative Commons Lite module.') : t('Module not enabled.'),
+  );
+  
+  // Load variables
+  $form['creativecommons_lite']['options'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Settings'),
+  );
+  
+  $fields = array('jurisdiction', 'mandatory', 'icon_style', 'default_license');
+  $cclite_settings = array();
+  foreach ($fields as $field) {
+    $form['creativecommons_lite']['options'][$field] = array(
+      '#type' => 'checkbox',
+      '#title' => t($field) .'='. variable_get('creativecommons_lite_'. $field, ''),
+    );
+  }
+  
+  // Load node licenses
+  $form['creativecommons_lite']['content'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Content Licenses'),
+  );
+  
+  $options = array();
+  $result = db_query("SELECT * FROM {creativecommons_lite}", $nid);
+  while ($row = db_fetch_object($result)) {
+    if ($row->license) {
+      $node = node_load($row->nid);
+      $options[] = $node->title .' ('. $row->license .')';
+    }
+  }
+  $form['creativecommons_lite']['content']['nodes'] = array(
+    '#type' => checkboxes,
+    '#options' => $options,
+  );
+  
+  return system_settings_form($form);
+}
 
 /**
  * Display license selection form.
