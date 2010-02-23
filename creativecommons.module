@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.74 2010/02/23 20:09:59 turadg Exp $
+// $Id: creativecommons.module,v 1.9.2.75 2010/02/23 20:15:08 turadg Exp $
 
 /**
  * @file
@@ -1962,8 +1962,18 @@ function creativecommons_node_form_validate($form, &$form_state) {
  * Save license/node relationship in database
  */
 function creativecommons_save($node, $op) {
-  //TODO: shouldn't be using $_POST... what's the drupal way to do this? use submit instead?
-  $cc = new creativecommons_license($_POST['creativecommons']['select_license_form']['cc_license_uri'], $_POST['creativecommons']['metadata']);
+  
+  // form submits data in creativecommons, while node_load stores it in cc
+  if (isset($node->creativecommons)) {
+    $cc_license_uri = $node->creativecommons['select_license_form']['cc_license_uri'];
+    $metadata = $node->creativecommons['metadata'];
+  }
+  else {
+    $cc_license_uri = $node->cc->uri;
+    $metadata = $node->cc->metadata;
+  }
+  
+  $cc = new creativecommons_license($cc_license_uri, $metadata);
   $cc->save($node->nid, $op);
 }
 
