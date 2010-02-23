@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.73 2010/02/11 22:05:23 balleyne Exp $
+// $Id: creativecommons.module,v 1.9.2.74 2010/02/23 20:09:59 turadg Exp $
 
 /**
  * @file
@@ -1742,26 +1742,20 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
         case 'node_license':
         case '0': // for backward-compatibility
 
-          if (!is_numeric(arg(1))) {
-            return;
-          }
-
-          $node = node_load(arg(1));
-
-          //TODO: don't display license block if user doesn't have permission to view node...
-          // what's arg(0) and arg(2)?
-          if ( $node && arg(0) == 'node' && ( $node->cc && $node->cc->is_available()) && ( (arg(2)=='view') || (arg(2)=='') ) ) {
-            // Check for redundant site license
-            $site_license_display = variable_get('creativecommons_site_license_display', FALSE);
-            $site_license = creativecommons_get_site_license();
-            $redundant_display = variable_get('creativecommons_node_license_redundant_display', TRUE);
-            if ($site_license_display && !$redundant_display && $node->cc->uri == $site_license->uri) {
-              return;
+          if ($node = menu_get_object()) {
+            if (isset($node->cc) && $node->cc->is_available()) {
+              // Check for redundant site license
+              $site_license_display = variable_get('creativecommons_site_license_display', FALSE);
+              $site_license = creativecommons_get_site_license();
+              $redundant_display = variable_get('creativecommons_node_license_redundant_display', TRUE);
+              if ($site_license_display && !$redundant_display && $node->cc->uri == $site_license->uri) {
+                return;
+              }
+              
+              // license html
+              $block['content'] = $node->cc->get_html();
+              return $block;
             }
-
-            // license html
-            $block['content'] = $node->cc->get_html();
-            return $block;
           }
           return; // otherwise return nothing
 
