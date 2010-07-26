@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.75 2010/02/23 20:15:08 turadg Exp $
+// $Id: creativecommons.module,v 1.9.2.76 2010/07/26 16:46:18 turadg Exp $
 
 /**
  * @file
@@ -207,7 +207,7 @@ function creativecommons_settings() {
 
   $nc_img_options = array();
   foreach (array('' => 'nc', 'eu' => 'nc-eu', 'jp' => 'nc-jp') as $key => $value) {
-    $nc_img_options[$key] = '<img src="'. base_path() . drupal_get_path('module', 'creativecommons') .'/images/icons/'. $value .'.png" alt="'. $value .'" title="'. $value .'"/>';
+    $nc_img_options[$key] = theme('image', drupal_get_path('module', 'creativecommons') .'/images/icons/'. $value .'.png', $value, $value);
   }
   $form['creativecommons_display']['creativecommons_nc_img'] = array(
     '#type' => 'radios',
@@ -1753,7 +1753,7 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
               }
               
               // license html
-              $block['content'] = $node->cc->get_html();
+              $block['content'] = theme('creativecommons_node_license', $node);
               return $block;
             }
           }
@@ -1766,24 +1766,7 @@ function creativecommons_block($op='list', $delta=0, $edit = array()) {
           if (variable_get('creativecommons_site_license_display', FALSE)) {
             $cc = creativecommons_get_site_license();
             if ($cc->is_available()) {
-              $output = "\n<!--Creative Commons Site License-->\n";
-
-              // HTML output
-              $output .= $cc->get_html(TRUE);
-
-              // Additional text
-              if ($additional_text = variable_get('creativecommons_site_license_additional_text', '')) {
-                $output .= '<br/>'. $additional_text;
-              }
-
-              // RDF output
-              if ($cc->has_license() && variable_get('creativecommons_rdf', TRUE)) {
-                $output .= "\n<!-- ". $cc->get_rdf() ." -->\n";
-              }
-
-              $output .= "<!--/Creative Commons Site License-->\n";
-
-              $block['content'] = $output;
+              $block['content'] = theme('creativecommons_site_license', $cc);
               $block['subject'] = 'Site License';
             }
             return $block;
@@ -2181,3 +2164,23 @@ function creativecommons_views_api() {
   );
 }
 
+/**
+ * Implementation of hook_theme
+ */ 
+function creativecommons_theme() {
+  $path = drupal_get_path('module', 'creativecommons') .'/theme';
+  require_once "./$path/theme.inc";
+
+  return array(
+    'creativecommons_node_license' => array(
+      'arguments' => array('node' => NULL),
+      'file' => 'theme.inc',
+      'path' => $path,
+    ),
+    'creativecommons_site_license' => array(
+      'arguments' => array('cc' => NULL),
+      'file' => 'theme.inc',
+      'path' => $path,
+    ),
+  );
+}
