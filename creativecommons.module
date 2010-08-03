@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.77 2010/08/03 15:23:00 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.78 2010/08/03 15:43:43 kreynen Exp $
 
 /**
  * @file
@@ -2189,4 +2189,16 @@ function creativecommons_theme() {
       'path' => $path,
     ),
   );
+}
+
+/**
+* Implementation of hook_content_extra_fields.
+*/
+function creativecommons_content_extra_fields() {
+  $extras['creativecommons'] = array(
+    'label' => t('Creative Commons Licensing'),
+    'description' => t('Allows user to select Creative Commons license and add additional attributes.'),
+    'weight' => 100,
+  );
+  return $extras;
 }
