@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.80 2010/08/09 20:32:24 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.81 2010/08/09 21:48:31 kreynen Exp $
 
 /**
  * @file
@@ -2203,4 +2203,66 @@ function creativecommons_content_extra_fields() {
     'weight' => 100,
   );
   return $extras;
+}
+
+/**
+ * Implementation of hook_token_list().
+ *
+ */
+function creativecommons_token_list($type = 'all') {
+  if ($type == 'node' || $type == 'all') {
+
+    $tokens['node']['creativecommons-licence-name'] = t("Full Creative Commons license for node.");
+    $tokens['node']['creativecommons-licence-type'] = t("Short Creative Commons license for node.");
+    $tokens['node']['creativecommons-licence-uri'] = t("Creative Commons URI  for node.");
+  }
+  
+  if ($type == 'global' || $type == 'all') {
+  
+    $tokens['global']['creativecommons-site-licence-name'] = t("Full Creative Commons license for site.");
+    $tokens['global']['creativecommons-site-licence-type'] = t("Short Creative Commons license for site.");
+    $tokens['global']['creativecommons-site-licence-uri'] = t("Creative Commons URI for site.");
+    
+  }
+  
+  return $tokens;
+}
+
+
+/**
+ * Implementation of hook_token_values().
+ */
+function creativecommons_token_values($type, $object = NULL) {
+  $values = array();
+  switch ($type) {
+    case 'global':
+      
+      $site_license = creativecommons_get_site_license();
+
+      $values['creativecommons-site-licence-name'] = $site_license->name;
+      $values['creativecommons-site-licence-type'] = $site_license->type;
+      $values['creativecommons-site-licence-uri'] = $site_license->uri;
+      
+    break;
+    case 'node':
+      // Node tokens here.
+ 
+      if($object->creativecommons){
+        //initial form submit
+        $values['creativecommons-licence-uri'] = $object->creativecommons['select_license_form']['cc_license_uri'];
+        $selected_license = new creativecommons_license($object->creativecommons['select_license_form']['cc_license_uri']);      
+        
+        $values['creativecommons-licence-name'] = $selected_license->name;
+        $values['creativecommons-licence-type'] = $selected_license->type;
+        
+      } else {
+        //value saved to node
+        $values['creativecommons-licence-name'] = $object->cc->name;
+        $values['creativecommons-licence-type'] = $object->cc->type;
+        $values['creativecommons-licence-uri'] = $object->cc->uri;
+        
+      }
+    break;
+  }
+  return $values;
 }
