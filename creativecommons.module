@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.79 2010/08/09 20:07:47 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.80 2010/08/09 20:32:24 kreynen Exp $
 
 /**
  * @file
@@ -1682,11 +1682,13 @@ function creativecommons_node_type_submit($form, &$form_state) {
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
   if ($node->cc && variable_get('creativecommons_rdf', TRUE)) {
     $output = "<!-- ". $node->cc->get_rdf() ." -->";
-    $node->content['body']['#value'] .= $output;
-    if ($teaser) {
-      $node->content['teaser']['#value'] .= $output;
-    }
 
+    $node->body .= $output;
+    
+    if ($teaser) {
+      $node->teaser .= $output;
+    }
+   
     return $node;
   }
 }
