@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.82 2010/08/11 16:24:47 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.83 2010/08/11 16:33:47 kreynen Exp $
 
 /**
  * @file
@@ -546,7 +546,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
   $account = user_load(array('uid' => $user->uid));
 
   // load available licenses
-  $jurisdiction = $account->creativecommons['jurisdiction'] ? $account->creativecommons['jurisdiction'] : variable_get('creativecommons_default_jurisdiction', '');
+  $jurisdiction = isset($account->creativecommons['jurisdiction']) ? $account->creativecommons['jurisdiction'] : variable_get('creativecommons_default_jurisdiction', '');
   $available_licenses = creativecommons_get_available_license_list( array('jurisdiction' => $jurisdiction) );
   $available_license_types = creativecommons_get_available_license_types();
   $jurisdictions = creativecommons_get_jurisdictions();
@@ -568,11 +568,11 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
     $desired_license = new creativecommons_license($form_state_segment[$key]);
   }
   // Case 2: Otherwise, use license uri attached to node
-  elseif ($node->cc) {
+  elseif (isset($node->cc)) {
     $desired_license = new creativecommons_license($node->cc->uri);
   }
   // Case 3a: Otherwise, use user default
-  elseif ($account->cc && $account->cc->is_available()) {
+  elseif (isset($account->cc) && $account->cc->is_available()) {
     $desired_license = $account->cc;
   }
   // Case 3b: Otherwise, use site default
@@ -594,7 +594,7 @@ function creativecommons_select_license_form($node, $key, $form_state_segment = 
   $selected_license_uri = creativecommons_get_license_uri_from_available($desired_license->type, $jurisdiction);
 
   // Warn user if changed (if selected doesn't match desired, or (special case) if node->cc is None but that's not available)
-  if (($desired_license->uri != $selected_license_uri) || ($node->cc && !$desired_license->uri && !$desired_license->is_available())) {
+  if (($desired_license->uri != $selected_license_uri) || (isset($node->cc) && !$desired_license->uri && !$desired_license->is_available())) {
     $selected_license = new creativecommons_license($selected_license_uri);
 
     // Case 1: License is no longer available
@@ -1049,7 +1049,7 @@ function creativecommons_api_request($uri, $headers = array(), $method = 'GET', 
 
   $result = drupal_http_request($uri, $headers, $method, $data);
 
-  if ($result->error) {
+  if (isset($result->error)) {
     drupal_set_message(t('Error accessing CC API: %error', array('%error' => $result->error)), 'error', FALSE);
     return NULL;
   }
@@ -1206,20 +1206,22 @@ function creativecommons_get_metadata_description($key) {
  * @return string default metadata value
  */
 function creativecommons_get_metadata_default($key) {
+  $output = '';
   switch ($key) {
     case 'attributionURL':
     case 'attributionName':
       // User defaults
       global $user;
       $account = user_load(array('uid' => $user->uid));
-      if (is_array($account->creativecommons) && in_array($key, array('attributionName', 'attributionURL'))) {
-        return $account->creativecommons[$key];
+      if (isset($account->creativecommons[$key])) {
+        $output = $account->creativecommons[$key];
       }
       break;
     case 'morePermission':
       //TODO: site default
       break;
   }
+  return $output;
 }
 
 /**
@@ -1306,7 +1308,6 @@ function creativecommons_get_dcmi_types() {
  * Implementation of hook_nodeapi().
  */
 function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
-
   switch ($op) {
     // settings   'form post replaced by form_api
     case 'load':
@@ -1339,7 +1340,6 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
       }
       break;
   }
-  return $output;
 }
 
 /**
@@ -1838,7 +1838,8 @@ function creativecommons_node_form($node, $form_state) {
     '#tree' => TRUE,
   );
 
-  $form['creativecommons']['select_license_form'] = creativecommons_select_license_form($node, 'cc_license_uri', $form_state['values']['creativecommons']['select_license_form']);
+  $form_state_select_license_form = isset($form_state['values']['creativecommons']['select_license_form']) ? $form_state['values']['creativecommons']['select_license_form'] : NULL;
+  $form['creativecommons']['select_license_form'] = creativecommons_select_license_form($node, 'cc_license_uri', $form_state_select_license_form);
 
 
   //TODO: 2.x button 'save user defaults' here? or checkbox maybe (save as defaults...)?
@@ -1855,7 +1856,7 @@ function creativecommons_node_form($node, $form_state) {
   }
 
   // Check for non-empty fields if preview mode
-  if (!$show_meta && is_array($form_state['values']['creativecommons']['metadata'])) {
+  if (!$show_meta && isset($form_state['values']['creativecommons']['metadata']) &&is_array($form_state['values']['creativecommons']['metadata'])) {
     foreach ($form_state['values']['creativecommons']['metadata'] as $key => $value) {
       if ($value && creativecommons_metadata_is_available($key)) {
         $show_meta = TRUE;
@@ -1864,7 +1865,7 @@ function creativecommons_node_form($node, $form_state) {
     }
   }
   // Check for stored non-empty fields if not in preview mode
-  else if ($node->cc && $node->cc->has_available_metadata()) {
+  else if (isset($node->cc) && $node->cc->has_available_metadata()) {
     $show_meta = TRUE;
   }
 
@@ -1886,10 +1887,10 @@ function creativecommons_node_form($node, $form_state) {
     /**
      * Three cases: preview, stored, default (only for some).
      */
-    if (is_array($form_state['values']['creativecommons']['metadata'])) {
+    if (isset($form_state['values']['creativecommons']['metadata']) && is_array($form_state['values']['creativecommons']['metadata'])) {
       $selected = $form_state['values']['creativecommons']['metadata'][$key];
     }
-    else if ($node->cc) {
+    else if (isset($node->cc)) {
       $selected = $node->cc->metadata[$key];
     }
     else {
@@ -2157,8 +2158,8 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
       break;
     case 'load':
       $result = db_query('SELECT * FROM {creativecommons_user} WHERE uid = %d', $account->uid);
+      $account->creativecommons = array();
       while ($row = db_fetch_object($result)) {
-        $account->creativecommons = array();
         foreach ($row as $key => $value) {
           if ($key != 'uid') {
             $account->creativecommons[$key] = $value;
@@ -2167,7 +2168,7 @@ function creativecommons_user($op, &$edit, &$account, $category = NULL) {
       }
 
       // Load license, if not set to use site default
-      if ($account->creativecommons['license_type'] != 'site') {
+      if (!empty($account->creativecommons['license_type']) && $account->creativecommons['license_type'] != 'site') {
         $jurisdiction = $account->creativecommons['jurisdiction'] ? $account->creativecommons['jurisdiction'] : variable_get('creativecommons_default_jurisdiction', '');
         $license_uri = creativecommons_get_license_uri_from_all($account->creativecommons['license_type'], $jurisdiction);
         $account->cc = new creativecommons_license($license_uri);
