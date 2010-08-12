@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.83 2010/08/11 16:33:47 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.84 2010/08/12 23:37:39 kreynen Exp $
 
 /**
  * @file
@@ -1970,9 +1970,30 @@ function creativecommons_save($node, $op) {
     $cc_license_uri = $node->creativecommons['select_license_form']['cc_license_uri'];
     $metadata = $node->creativecommons['metadata'];
   }
-  else {
+  elseif (!empty($node->cc)) {
     $cc_license_uri = $node->cc->uri;
     $metadata = $node->cc->metadata;
+  }
+  // Fallback to the default user or site license
+  else {
+    // Retrieve the account of the node owner
+    if ($user->uid == $node->uid) { 
+          $account = $user;
+    }
+    else {
+      $account = user_load(array('uid' => $node->uid));
+    }
+    // Test whether user has permissions to set his default license
+    if (user_access('use creative commons user defaults', $account)) {
+      $cc_license_uri = $account->cc->uri;
+      $metadata = $account->cc->metadata;
+    }
+    // Fallback to the default site license
+    elseif (creativecommons_node_type_is_enabled($node->type)) {
+      $default_license = creativecommons_get_default_license();
+      $cc_license_uri = $default_license->uri;
+      $metadata = $default_license->metadata;
+    }
   }
   
   // check that licensing is enabled for the content type and at least on license is enabled to
