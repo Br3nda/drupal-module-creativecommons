@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.84 2010/08/12 23:37:39 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.85 2010/08/28 23:33:36 kreynen Exp $
 
 /**
  * @file
@@ -1806,7 +1806,7 @@ function creativecommons_node_form($node, $form_state) {
     '@think-about-url' => 'http://creativecommons.org/about/think',
   );
 
-  if(variable_get('creativecommons_user_message', '')){
+  if (variable_get('creativecommons_user_message', '')) {
     // Custom Creative Commons license description
     $description = variable_get('creativecommons_user_message', '');
   }
@@ -1865,7 +1865,7 @@ function creativecommons_node_form($node, $form_state) {
     }
   }
   // Check for stored non-empty fields if not in preview mode
-  else if (isset($node->cc) && $node->cc->has_available_metadata()) {
+  elseif (isset($node->cc) && $node->cc->has_available_metadata()) {
     $show_meta = TRUE;
   }
 
@@ -1890,7 +1890,7 @@ function creativecommons_node_form($node, $form_state) {
     if (isset($form_state['values']['creativecommons']['metadata']) && is_array($form_state['values']['creativecommons']['metadata'])) {
       $selected = $form_state['values']['creativecommons']['metadata'][$key];
     }
-    else if (isset($node->cc)) {
+    elseif (isset($node->cc)) {
       $selected = $node->cc->metadata[$key];
     }
     else {
@@ -1998,7 +1998,7 @@ function creativecommons_save($node, $op) {
   
   // check that licensing is enabled for the content type and at least on license is enabled to
   // avoid errors on new installs
-  if(creativecommons_node_type_is_enabled($node->type) && creativecommons_licenses_enabled()) {
+  if (creativecommons_node_type_is_enabled($node->type) && creativecommons_licenses_enabled()) {
     $cc = new creativecommons_license($cc_license_uri, $metadata);
     $cc->save($node->nid, $op);
   }
@@ -2283,7 +2283,7 @@ function creativecommons_token_values($type, $object = NULL) {
     case 'node':
       // Node tokens here.
  
-      if($object->creativecommons){
+      if ($object->creativecommons) {
         //initial form submit
         $values['creativecommons-licence-uri'] = $object->creativecommons['select_license_form']['cc_license_uri'];
         $selected_license = new creativecommons_license($object->creativecommons['select_license_form']['cc_license_uri']);      
@@ -2291,7 +2291,8 @@ function creativecommons_token_values($type, $object = NULL) {
         $values['creativecommons-licence-name'] = $selected_license->name;
         $values['creativecommons-licence-type'] = $selected_license->type;
         
-      } else {
+      } 
+      else {
         //value saved to node
         $values['creativecommons-licence-name'] = $object->cc->name;
         $values['creativecommons-licence-type'] = $object->cc->type;
