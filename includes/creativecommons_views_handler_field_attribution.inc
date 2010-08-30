@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons_views_handler_field_attribution.inc,v 1.1.2.2 2010/08/28 23:33:36 kreynen Exp $
+// $Id: creativecommons_views_handler_field_attribution.inc,v 1.1.2.2.2.1 2010/08/30 12:02:47 kreynen Exp $
 
 /**
  * @file
@@ -49,14 +49,14 @@ class creativecommons_views_handler_field_attribution extends views_handler_fiel
       $attribution = l($text, $attribution_url, array('attributes' => $attributes));
     }
     elseif (creativecommons_metadata_is_available('attributionName')) {
-      $attribution = '<span property="cc:attributionName">'. $attribution_name .'</span>';
+      $attribution = '<span property="cc:attributionName">' . $attribution_name . '</span>';
     }
 
 
     // Return output, if any
     if ($attribution) {
-      $url = url('node/'. $values->nid, array('absolute' => TRUE));
-      return '<span xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" about="'. $url .'">'. $attribution .'</span>';
+      $url = url('node/' . $values->nid, array('absolute' => TRUE));
+      return '<span xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" about="' . $url . '">' . $attribution . '</span>';
     }
   }
 }

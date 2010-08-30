@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.views.inc,v 1.1.2.3 2009/12/29 03:19:30 balleyne Exp $
+// $Id: creativecommons.views.inc,v 1.1.2.3.2.1 2010/08/30 12:02:47 kreynen Exp $
 /**
  * @file
  * Provide views data and handler information for creativecommons.module.
@@ -97,7 +97,7 @@ function creativecommons_views_data() {
 function creativecommons_views_handlers() {
   return array(
     'info' => array(
-      'path' => drupal_get_path('module', 'creativecommons') .'/includes',
+      'path' => drupal_get_path('module', 'creativecommons') . '/includes',
     ),
     'handlers' => array(
       // argument handlers

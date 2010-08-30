@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons_views_handler_filter_license_uri.inc,v 1.1.2.4 2010/08/28 23:33:36 kreynen Exp $
+// $Id: creativecommons_views_handler_filter_license_uri.inc,v 1.1.2.4.2.1 2010/08/30 12:02:47 kreynen Exp $
 
 /**
  * @file
@@ -56,7 +56,7 @@ class creativecommons_views_handler_filter_license_uri extends views_handler_fil
       else {
         $like = '\'\'';
       }
-      $where = " $this->table_alias.$this->real_field $not" ." LIKE ".  $like . $or  . $where;     
+      $where = " $this->table_alias.$this->real_field $not" . " LIKE " . $like . $or . $where;     
     }
     $this->query->add_where($this->options['group'], $where);
   }

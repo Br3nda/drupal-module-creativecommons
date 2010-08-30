@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons_views_handler_field_license_uri.inc,v 1.1.2.1 2009/08/17 18:52:56 balleyne Exp $
+// $Id: creativecommons_views_handler_field_license_uri.inc,v 1.1.2.1.2.1 2010/08/30 12:02:47 kreynen Exp $
 
 /**
  * @file
@@ -27,10 +27,10 @@ class creativecommons_views_handler_field_license_uri extends views_handler_fiel
     $image_keys = array('button_large', 'button_small', 'icons', 'tiny_icons');
     $name_keys = array('full', 'generic', 'short');
     foreach ($image_keys as $key) {
-      $display_styles[$key] = ucwords(str_replace('_', ' ', $key)) .', e.g. '. $cc->get_image($key);
+      $display_styles[$key] = ucwords(str_replace('_', ' ', $key)) . ', e.g. ' . $cc->get_image($key);
     }
     foreach ($name_keys as $key) {
-      $display_styles[$key] = ucwords(str_replace('_', ' ', $key)) .', e.g. '. $cc->get_name($key);
+      $display_styles[$key] = ucwords(str_replace('_', ' ', $key)) . ', e.g. ' . $cc->get_name($key);
     }
 
     $form['display_style'] = array(
@@ -75,8 +75,8 @@ class creativecommons_views_handler_field_license_uri extends views_handler_fiel
       $name = l($name, $license_uri, array('html' => $html, 'attributes' => $attributes));
     }
 
-    $url = url('node/'. $values->nid, array('absolute' => TRUE));
-    return '<span xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" about="'. $url .'">'. $name .'</span>';
+    $url = url('node/' . $values->nid, array('absolute' => TRUE));
+    return '<span xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" about="' . $url . '">' . $name . '</span>';
   }
 }
 

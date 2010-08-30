@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.install,v 1.1.2.20 2010/02/11 22:05:23 balleyne Exp $
+// $Id: creativecommons.install,v 1.1.2.20.2.1 2010/08/30 12:02:47 kreynen Exp $
 
 /**
  * @file
@@ -139,11 +139,11 @@ function creativecommons_schema() {
 function creativecommons_install() {
   drupal_install_schema('creativecommons');
 
-  drupal_set_message('Creative Commons module enabled');
+  drupal_set_message(st('Creative Commons module enabled'));
 
   // CC lite warning
   if (module_exists('creativecommons_lite')) {
-    drupal_set_message(st('To avoid confusion, it is not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time. ' . l('Import from CC Lite', 'admin/settings/creativecommons/import')), 'warning');
+    drupal_set_message(st('To avoid confusion, it is not recommended to have both Creative Commons and Creative Commons Lite enabled at the same time. ' . l(st('Import from CC Lite'), 'admin/settings/creativecommons/import')), 'warning');
   }
 }
 
@@ -266,6 +266,6 @@ function creativecommons_update_4() {
   }
 
   // Notify user of new permission
-  drupal_set_message('The Creative Commons module now has a separate permission for allowing user defaults. It\'s been enabled for roles with the attach creative commons permission.');
+  drupal_set_message(st('The Creative Commons module now has a separate permission for allowing user defaults. It\'s been enabled for roles with the attach creative commons permission.'));
   return $ret;
 }
