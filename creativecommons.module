@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.85.2.4 2010/09/06 19:03:14 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.85.2.5 2010/09/06 19:13:03 kreynen Exp $
 
 /**
  * @file
@@ -1312,6 +1312,23 @@ function creativecommons_get_dcmi_types() {
 
 
 /**
+* Implements hook_node_view().
+*/
+function creativecommons_node_view($node, $view_mode) {
+  if ($view_mode == 'rss') {
+    if ($node->cc && $node->cc->is_available() && $node->cc->has_license()) {
+      $node->rss_elements[] = array(
+        'key' => 'creativeCommons:license',
+        'value' => $node->cc->uri,
+        'attributes' => array('xmlns:creativeCommons' => 'http://backend.userland.com/creativeCommonsRssModule'),
+      );
+    }
+  }
+}
+
+   
+
+/**
  * Implementation of hook_nodeapi().
  */
 function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
@@ -1335,17 +1352,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
       creativecommons_delete($node);
       break;
 
-    case 'rss item':
-      //TODO: move xmlns declarations to top of file...
-      if ($node->cc && $node->cc->is_available() && $node->cc->has_license()) {
-        $return = array();
-        $return[] = array('key' => 'creativeCommons:license', 'value' => $node->cc->uri, 'attributes' => array('xmlns:creativeCommons' => 'http://backend.userland.com/creativeCommonsRssModule'));
-        if (creativecommons_metadata_is_available('morePermissions') && $node->cc->metadata['morePermissions']) {
-          $return[] = array('key' => 'cc:morePermissions', 'value' => $node->cc->metadata['morePermissions'], 'attributes' => array('xmlns:cc' => 'http://creativecommons.org/ns#'));
-        }
-        return $return;
-      }
-      break;
+
   }
 }
 
@@ -1353,6 +1360,7 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
  * Implementation of hook_form_alter().
  */
 function creativecommons_form_alter(&$form, $form_state, $form_id) {
+
   // Add content type checkbox to node_type_form
   if ($form_id == 'node_type_form' && isset($form['identity']['type'])) {
     $node->type = $form['#node_type']->type;
@@ -1633,9 +1641,12 @@ function creativecommons_search($op = 'search', $keys = NULL) {
         foreach ($find as $item) {
           // Build the node body.
           $node = node_load($item->sid);
-          $node->build_mode = NODE_BUILD_SEARCH_RESULT;
-          $node = node_build_content($node, FALSE, FALSE);
-          $node->body = drupal_render($node->content);
+          //$node->build_mode = NODE_BUILD_SEARCH_RESULT;
+          //$node = node_build_content($node, FALSE, FALSE);
+          //$node->body = drupal_render($node->content);
+          
+          $content = node_view($node, 'teaser');
+          $node->body = drupal_render($content);
 
           // Fetch comments for snippet.
           $node->body .= module_invoke('comment', 'nodeapi', $node, 'update index');
