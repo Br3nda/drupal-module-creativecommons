@@ -1,5 +1,22 @@
-; $Id: creativecommons.info,v 1.2 2009/06/08 22:12:02 balleyne Exp $
+; $Id: creativecommons.info,v 1.2.4.1 2010/09/06 14:17:15 kreynen Exp $
 name = Creative Commons
 description = Allows users to add Creative Commons license to selected content.
 package = Licenses
-core = 6.x
+core = 7.x
+php = 5.2
+files[] = creativecommons.install
+files[] = creativecommons.module
+files[] = creativecommons.actions.inc
+files[] = creativecommons.class.php
+files[] = creativecommons.actions.inc
+files[] = creativecommons.actions.inc
+
+files[] = theme/theme.inc
+
+files[] = includes/creativecommons_views_handler_argument_nid.inc
+files[] = includes/creativecommons_views_handler_field_attribution.inc
+files[] = includes/creativecommons_views_handler_field_license_uri.inc
+files[] = icreativecommons_views_handler_filter_license_uri.inc
+files[] = creativecommons.views_default.inc
+files[] = includes/creativecommons.views.inc
+
