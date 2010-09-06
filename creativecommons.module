@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.85.2.7 2010/09/06 20:34:27 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.85.2.8 2010/09/06 21:09:47 kreynen Exp $
 
 /**
  * @file
@@ -1303,12 +1303,22 @@ function creativecommons_nodeapi(&$node, $op, $arg, $a4) {
  * Implementation of hook_form_alter().
  */
  
-function creativecommons_form_alter(&$form, &$form_state, $form_id) {
-
+function creativecommons_form_alter(&$form, $form_state, $form_id) {
+  
   // Add content type checkbox to node_type_form
-  if ($form_id == 'node_type_form' && isset($form['identity']['type'])) {
+  if ($form_id == 'node_type_form') {
     $node->type = $form['#node_type']->type;
-    $form['workflow']['creativecommons'] = array(
+    
+     $form['licensing'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Licensing'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#group' => 'additional_settings',
+      '#weight' => -1,
+    );
+    
+    $form['licensing']['creativecommons'] = array(
       '#type' => 'checkbox',
       '#title' => t('Allow user to attach a Creative Commons license'),
       '#description' => t('Users with the <em>attach creative commons</em> permission will be able to select a license for a node of this type.'),
@@ -1318,8 +1328,9 @@ function creativecommons_form_alter(&$form, &$form_state, $form_id) {
     $form['#submit'][] = 'creativecommons_node_type_submit';
   }
   // Add CC license selection to node form
-  elseif (isset($form['type']) && $form['type']['#value'] . '_node_form' == $form_id) {
-    $node = $form['#node'];
+  elseif (isset($form['type']) && $form['type']['#default_value'] . '_node_form' == $form_id) {
+  
+      //$node = $form['#node'];
     if (creativecommons_node_type_is_enabled($node->type)) {
       $form = array_merge_recursive($form, creativecommons_node_form($form['#node'], $form_state));
     }
