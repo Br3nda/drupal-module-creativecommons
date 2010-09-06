@@ -1,5 +1,9 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.85.2.1 2010/08/30 12:02:47 kreynen Exp $
+<<<<<<< creativecommons.module
+// $Id: creativecommons.module,v 1.9.2.85.2.2 2010/09/06 18:38:37 kreynen Exp $
+=======
+// $Id: creativecommons.module,v 1.9.2.85.2.2 2010/09/06 18:38:37 kreynen Exp $
+>>>>>>> 1.9.2.85.2.1
 
 /**
  * @file
@@ -37,9 +41,9 @@ require_once 'creativecommons.class.php';
 require_once 'creativecommons.actions.inc';
 
 /**
- * Implementation of hook_perm().
+ * Implementation of hook_permission().
  */
-function creativecommons_perm() {
+function creativecommons_hook_permission() {
   return array(
     'administer creative commons',
     'attach creative commons',
@@ -53,7 +57,7 @@ function creativecommons_perm() {
 function creativecommons_menu() {
   $items = array();
 
-  $items['admin/settings/creativecommons'] = array(
+  $items['admin/config/search/creativecommons'] = array(
     'title' => 'Creative Commons',
     'description' => 'Configure the Creative Commons settings.',
     'page callback' => 'drupal_get_form',
@@ -61,13 +65,13 @@ function creativecommons_menu() {
     'access arguments' => array('administer creative commons')
   );
 
-  $items['admin/settings/creativecommons/edit'] = array(
+  $items['admin/config/search/creativecommons/edit'] = array(
     'title' => 'Settings',
     'type' => MENU_DEFAULT_LOCAL_TASK,
     'weight' => -10
   );
 
-  $items['admin/settings/creativecommons/default'] = array(
+  $items['admin/config/search/creativecommons/default'] = array(
     'title' => 'Defaults',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_site_defaults'),
@@ -75,7 +79,7 @@ function creativecommons_menu() {
     'type' => MENU_LOCAL_TASK,
   );
 
-  $items['admin/settings/creativecommons/types'] = array(
+  $items['admin/config/search/creativecommons/types'] = array(
     'title' => 'Content types',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_types_form'),
@@ -84,7 +88,7 @@ function creativecommons_menu() {
     'weight' => 10,
   );
   
-  $items['admin/settings/creativecommons/import'] = array(
+  $items['admin/config/search/creativecommons/import'] = array(
     'title' => 'Import',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('creativecommons_import_form'),
@@ -470,11 +474,15 @@ function creativecommons_types_form() {
 
   $form = array();
 
+  // Load all node types and resets the static cache.
+  node_type_clear();
+  $types = node_type_get_types();
+  
   $form['creativecommons_license']['creativecommons_node_types'] = array(
     '#type' => 'checkboxes',
     '#title' => t('Content Types'),
     '#default_value' => variable_get('creativecommons_node_types', array()),
-    '#options' => node_get_types('names'),
+    '#options' => $types,
     '#description' => t('Enable Creative Commons licensing for the following content types.'),
   );
 
@@ -543,7 +551,7 @@ function creativecommons_import_form() {
 function creativecommons_select_license_form($node, $key, $form_state_segment = NULL) {
   // load user for user defaults
   global $user;
-  $account = user_load(array('uid' => $user->uid));
+  $account = user_load($user->uid);
 
   // load available licenses
   $jurisdiction = isset($account->creativecommons['jurisdiction']) ? $account->creativecommons['jurisdiction'] : variable_get('creativecommons_default_jurisdiction', '');
@@ -1047,7 +1055,9 @@ function creativecommons_api_request($uri, $headers = array(), $method = 'GET', 
 
   $uri = CC_API_ROOT . (strpos($uri, '/') === 0 ? $uri : '/' . $uri);
 
-  $result = drupal_http_request($uri, $headers, $method, $data);
+  $result = drupal_http_request($uri, $headers);
+  
+  //$result = drupal_http_request($uri, $headers, $method, $data);
 
   if (isset($result->error)) {
     drupal_set_message(t('Error accessing CC API: %error', array('%error' => $result->error)), 'error', FALSE);
@@ -1070,10 +1080,16 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
   if ($xml) {
 
     // get timestamp ***directly from variables table*** to avoid caching
+<<<<<<< creativecommons.module
+    $results = db_query("SELECT value FROM {variable} WHERE name = :name", array(':name' => 'creativecommons_api_' . $uri . '_timestamp'));
+    
+    if ($row = $results) {
+=======
     $result = db_query("SELECT value FROM {variable} WHERE name = '%s'", 'creativecommons_api_' . $uri . '_timestamp');
     if ($row = db_fetch_object($result)) {
+>>>>>>> 1.9.2.85.2.1
       if ($ts = unserialize($row->value)) {
-        $diff = (time() - $ts)/60/60;
+        $diff = (REQUEST_TIME - $ts)/60/60;
         if ($diff >= $hrs)
           $update = TRUE;
       }
@@ -1090,8 +1106,13 @@ function creativecommons_return_xml($uri, $hrs = 24, $update = FALSE) {
     switch ($result->code) {
       case 200:
         $xml = utf8_encode($result->data);
+<<<<<<< creativecommons.module
+        variable_set('creativecommons_api_' . $uri, $xml);
+        variable_set('creativecommons_api_' . $uri . '_timestamp', REQUEST_TIME);
+=======
         variable_set('creativecommons_api_' . $uri, $xml);
         variable_set('creativecommons_api_' . $uri . '_timestamp', time());
+>>>>>>> 1.9.2.85.2.1
         return $xml;
         break;
       default:
@@ -1212,7 +1233,7 @@ function creativecommons_get_metadata_default($key) {
     case 'attributionName':
       // User defaults
       global $user;
-      $account = user_load(array('uid' => $user->uid));
+      $account = user_load($user->uid);
       if (isset($account->creativecommons[$key])) {
         $output = $account->creativecommons[$key];
       }
@@ -1441,8 +1462,10 @@ function creativecommons_form_alter(&$form, $form_state, $form_id) {
         );
       }
 
-      // Node types:
-      $types = array_map('check_plain', node_get_types('names'));
+      // Load all node types and resets the static cache.
+      node_type_clear();
+      $types = node_type_get_types();
+      
       $form['advanced']['type'] = array(
         '#type' => 'checkboxes',
         '#title' => t('Only of the type(s)'),
@@ -1634,9 +1657,15 @@ function creativecommons_search($op = 'search', $keys = NULL) {
           $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
 
           $extra = node_invoke_nodeapi($node, 'search result');
+          
           $results[] = array(
+<<<<<<< creativecommons.module
+            'link' => url('node/' . $item->sid, array('absolute' => TRUE)),
+            'type' => node_type_get_name($node),
+=======
             'link' => url('node/' . $item->sid, array('absolute' => TRUE)),
             'type' => check_plain(node_get_types('name', $node)),
+>>>>>>> 1.9.2.85.2.1
 
             //TODO: this is a hack, should override search result template some how, but I'm unsure how to pass additional information through...
             'title' => $node->title . ' (' . $node->cc->get_name('short') . ')',
@@ -1981,7 +2010,7 @@ function creativecommons_save($node, $op) {
           $account = $user;
     }
     else {
-      $account = user_load(array('uid' => $node->uid));
+      $account = user_load($node->uid);
     }
     // Test whether user has permissions to set his default license
     if (user_access('use creative commons user defaults', $account)) {
@@ -2008,7 +2037,7 @@ function creativecommons_save($node, $op) {
  * Delete node/license relationship from database
  */
 function creativecommons_delete($node) {
-  db_query("DELETE FROM {creativecommons_node} WHERE nid = %d", $node->nid);
+  db_query("DELETE FROM {creativecommons_node} WHERE nid = :nid", array(':nid' => $node->nid));
 }
 
 
@@ -2212,8 +2241,14 @@ function creativecommons_views_api() {
  * Implementation of hook_theme
  */ 
 function creativecommons_theme() {
+<<<<<<< creativecommons.module
+  $path = drupal_get_path('module', 'creativecommons') . '/theme';
+  
+  require_once DRUPAL_ROOT . '/' . $path . '/theme.inc';
+=======
   $path = drupal_get_path('module', 'creativecommons') . '/theme';
   require_once "./$path/theme.inc";
+>>>>>>> 1.9.2.85.2.1
 
   return array(
     'creativecommons_node_license' => array(
