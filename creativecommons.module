@@ -1,5 +1,5 @@
 <?php
-// $Id: creativecommons.module,v 1.9.2.85 2010/08/28 23:33:36 kreynen Exp $
+// $Id: creativecommons.module,v 1.9.2.86 2010/09/14 02:42:44 kreynen Exp $
 
 /**
  * @file
@@ -1688,7 +1688,7 @@ function creativecommons_node_type_submit($form, &$form_state) {
  * Append rdf content to node. TODO: 2.x RDF/XML is no longer recommended by CC
  */
 function creativecommons_view($node, $teaser = FALSE, $page = FALSE) {
-  if ($node->cc && variable_get('creativecommons_rdf', TRUE)) {
+  if (isset($node->cc) && $node->cc && variable_get('creativecommons_rdf', TRUE)) {
     $output = "<!-- ". $node->cc->get_rdf() ." -->";
 
     $node->body .= $output;
@@ -1977,7 +1977,7 @@ function creativecommons_save($node, $op) {
   // Fallback to the default user or site license
   else {
     // Retrieve the account of the node owner
-    if ($user->uid == $node->uid) { 
+    if (isset($user->uid) && $user->uid == $node->uid) { 
           $account = $user;
     }
     else {
